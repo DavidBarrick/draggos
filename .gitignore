@@ -1,5 +1,6 @@
 
 .anchor
+.serverless
 .DS_Store
 target
 **/*.rs.bk

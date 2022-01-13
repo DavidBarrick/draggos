@@ -25,7 +25,7 @@ describe('anchor-escrow', () => {
 
   const takerAmount = 1000;
   const initializerAmount = 1;
-  const escrowIndex = '034';
+  const escrowIndex = 'escrow034';
 
   const escrowAccount = anchor.web3.Keypair.generate();
   const payer = anchor.web3.Keypair.generate();
@@ -115,7 +115,7 @@ describe('anchor-escrow', () => {
     vault_account_bump = _vault_account_bump;
 
     const [_vault_authority_pda, _vault_authority_bump] = await PublicKey.findProgramAddress(
-      [Buffer.from(anchor.utils.bytes.utf8.encode(`escrow${escrowIndex}`))],
+      [Buffer.from(anchor.utils.bytes.utf8.encode(escrowIndex))],
       program.programId
     );
     vault_authority_pda = _vault_authority_pda;
