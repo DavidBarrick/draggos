@@ -9,7 +9,6 @@ function App() {
         <p>
           <code>draggos</code>
         </p>
-
       </header>
     </div>
   );
