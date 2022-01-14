@@ -12,7 +12,7 @@ phases:
     commands:
       - echo Build started
       - export NODE_OPTIONS="--max-old-space-size=8192"
-      - npm run build --COGNITO_POOL_ID=$COGNITO_POOL_ID --COGNITO_POOL_CLIENT_ID=$COGNITO_POOL_CLIENT_ID --ENDPOINT=$ENDPOINT --API_KEY=$API_KEY --INFURA_ID=$INFURA_ID
+      - npm run build
   post_build:
     commands:
       # copy the contents of /build to S3
