@@ -129,9 +129,8 @@ pub struct Incubator {
     pub current_batch: u16
 }
 
-#[account(zero)]
+#[account]
 pub struct DraggosMetadata {
-    pub owner: Pubkey,
     pub hatched: bool,
     pub hatch_date: u64,
     pub hatch_batch: u64,
