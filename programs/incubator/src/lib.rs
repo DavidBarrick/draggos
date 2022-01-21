@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, CloseAccount, Mint, SetAuthority, TokenAccount, Transfer};
+use controller::program::Controller;
 
 declare_id!("6nc6StbnJGQYZaCtJPtsJd7fvuFfJyXdLitpoufY6V86");
 pub const METAPLEX_PROGRAM_ID: &'static str = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
@@ -14,41 +15,53 @@ pub mod incubator {
         incubator.capacity = capacity;
         incubator.eggs = Vec::new();
         incubator.authority = *ctx.accounts.authority.key;
-        //incubator.owner = ctx.accounts.owner.to_account_info().key();
+
         Ok(())
     }
 
-    pub fn deposit(ctx: Context<Deposit>, metadata_account_bump: u8, draggos_metadata_account_bump: u8) -> ProgramResult {
-        let incubator = &mut ctx.accounts.incubator;
-        //let draggos_metadata_account = &mut ctx.accounts.draggos_metadata_account;
-        //draggos_metadata_account.bump = draggos_metadata_account_bump;
+    pub fn deposit(ctx: Context<Deposit>, _metadata_account_bump: u8, draggos_metadata_account_bump: u8) -> ProgramResult {
+        let incubator = &mut ctx.accounts.incubator.clone();
+        let draggos_metadata_account = &mut ctx.accounts.draggos_metadata_account;
+        draggos_metadata_account.bump = draggos_metadata_account_bump;
 
-        /*if draggos_metadata_account.hatched {
+        if draggos_metadata_account.hatched {
             return Err(IncubatorError::AlreadyHatched.into());
-        }*/
-
+        }
 
         if incubator.eggs.len() >= incubator.capacity as usize {
-            // error
             return Err(IncubatorError::IncubatorFull.into());
-        } else if incubator.eggs.len() == (incubator.capacity - 1) as usize {
-            //hatch eggs    
-            //reset counter
-            for egg in incubator.eggs.iter() {
-                //draggos_metadata_account.hatched = true;
-            }
-
-            //incubator.eggs = Vec::new();
         } else {
             //deposit egg
             let egg = Egg {
                 owner: *ctx.accounts.authority.to_account_info().key,
                 //mint_account: ctx.accounts.mint_account.key().clone(),
-                metadata_account: *ctx.accounts.metadata_account.to_account_info().key,
-                //draggos_metadata_account: ctx.accounts.draggos_metadata_account.key().clone()
+                //metadata_account: *ctx.accounts.metadata_account.to_account_info(),
+                draggos_metadata_account: ctx.accounts.draggos_metadata_account.key().clone()
             };
 
             incubator.eggs.push(egg);
+        }
+
+        if incubator.eggs.len() == incubator.capacity as usize {
+            //hatch eggs    
+            //reset counter
+            for egg in incubator.eggs.iter() {
+
+                let (_, nonce) = Pubkey::find_program_address(
+                    &[
+                        b"incubator",
+                        incubator.to_account_info().key.as_ref(),
+                    ],
+                    ctx.accounts.controller_program.key,
+                );
+
+                controller::cpi::hatch(
+                    ctx.accounts.into_hatch(0),
+                    nonce,
+                )?;
+            }
+
+            incubator.eggs = Vec::new();
         }
 
         Ok(())
@@ -69,17 +82,8 @@ pub struct Deposit<'info> {
     pub authority: Signer<'info>,
     //pub token_account: Account<'info, TokenAccount>,
     pub metadata_account: AccountInfo<'info>,
-    pub draggos_metadata_account_0: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_1: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_2: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_3: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_4: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_5: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_6: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_7: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_8: Account<'info, DraggosMetadata>,
-    pub draggos_metadata_account_9: Account<'info, DraggosMetadata>,
-
+    pub draggos_metadata_account: Account<'info, DraggosMetadata>,
+    pub controller_program: AccountInfo<'info>,
     //pub mint_account: Account<'info, Mint>,
     pub system_program: Program<'info, System>,
 }
@@ -101,24 +105,6 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(Accounts)]
-#[instruction(index: u8, bump: u8)]
-pub struct InitializeMetadata<'info> {
-    #[account(
-        init,
-        seeds = [
-            b"incubator_v0".as_ref(),
-            &[index]
-        ],
-        bump = bump,
-        payer = authority,
-        space = 10000,
-    )]
-    pub metadata: Account<'info, DraggosMetadata>,
-    pub authority: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
 #[account]
 pub struct Incubator {
     pub authority: Pubkey,
@@ -131,6 +117,7 @@ pub struct Incubator {
 
 #[account]
 pub struct DraggosMetadata {
+    pub mint: Pubkey,
     pub hatched: bool,
     pub hatch_date: u64,
     pub hatch_batch: u64,
@@ -151,8 +138,8 @@ pub struct Metadata {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Egg {
     pub owner: Pubkey,
-    pub metadata_account: Pubkey,
-    //pub draggos_metadata_account: Pubkey,
+    //pub metadata_account: Metadata,
+    pub draggos_metadata_account: Pubkey,
     //pub mint_account: Pubkey,
 }
 
@@ -171,6 +158,21 @@ pub struct Creator {
     pub verified: bool,
     // In percentages, NOT basis points ;) Watch out!
     pub share: u8,
+}
+
+impl<'info> Deposit<'info> {
+    fn into_hatch(
+        &self,
+        index: usize
+    ) -> CpiContext<'_, '_, '_, 'info, controller::cpi::accounts::Hatch<'info>> {
+        let program = self.controller_program.clone();
+        let accounts = controller::cpi::accounts::Hatch {
+            token_program: self.controller_program.to_account_info(),
+            metadata_account: self.controller_program.to_account_info(),
+            draggos_metadata_account: self.controller_program.to_account_info()
+        };
+        CpiContext::new(program.to_account_info(), accounts)
+    }
 }
 
 #[error]

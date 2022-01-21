@@ -1,12 +1,12 @@
 [package]
-name = "incubator"
+name = "controller"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "incubator"
+name = "controller"
 
 [features]
 no-entrypoint = []
@@ -19,4 +19,3 @@ default = []
 anchor-lang = "0.19.0"
 anchor-spl = {version = "0.19.0"}
 spl-token = {version = "3.1.1", features = ["no-entrypoint"]}
-controller = { path = "../controller", features = ["cpi"] }
