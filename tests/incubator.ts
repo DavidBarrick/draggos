@@ -110,11 +110,10 @@ describe('incubator', () => {
       Buffer.from("incubator_v0")
     ], mainProgram.programId);
 
-    /*const [draggosMetadataPDA, draggosMetadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator"),
-      mint.toBuffer(),
+    const [draggosMetadataPDA, draggosMetadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
+      Buffer.from("incubator_v0"),
       Buffer.from("metadata"),
-    ], mainProgram.programId);*/
+    ], mainProgram.programId);
 
     /*const [metadataPDA, metadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from("metadata"),
@@ -128,13 +127,13 @@ describe('incubator', () => {
     console.log("Incubator: ", pda.toString());
     console.log("Owner: ", owner.key.publicKey.toString());
 
-    await program.rpc.deposit(0, 0, {
+    await program.rpc.deposit(draggosMetadataPDABump, {
       accounts: {
         incubator: pda,
         authority: owner.key.publicKey,
         //tokenAccount: token,
-        metadataAccount: owner.key.publicKey,
-        //draggosMetadataAccount: draggosMetadataPDA,
+        //metadataAccount: owner.key.publicKey,
+        draggosMetadataAccount: draggosMetadataPDA,
         //mintAccount: mint,
         systemProgram: SystemProgram.programId,
       },
@@ -142,7 +141,9 @@ describe('incubator', () => {
 
 
     let list = await program.account.incubator.fetch(pda);
-    return list;
+    let meta = await program.account.draggosMetadata.fetch(draggosMetadataPDA);
+
+    return { list, meta };
   }
 
   function programForUser(user) {
