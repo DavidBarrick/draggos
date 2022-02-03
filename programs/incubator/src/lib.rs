@@ -2,6 +2,18 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, CloseAccount, Mint, SetAuthority, TokenAccount, Transfer};
 use controller::program::Controller;
 
+use spl_token_metadata::{
+    instruction::{update_metadata_accounts, CreateMetadataAccountArgs, MetadataInstruction},
+    state::{Creator, Data},
+};
+
+use anchor_lang::solana_program::{
+    self,
+    instruction::{AccountMeta, Instruction},
+    pubkey::Pubkey,
+    sysvar,
+};
+
 declare_id!("6nc6StbnJGQYZaCtJPtsJd7fvuFfJyXdLitpoufY6V86");
 pub const METAPLEX_PROGRAM_ID: &'static str = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 
@@ -38,6 +50,28 @@ pub mod incubator {
         draggos_metadata_account.hatched = true;
         draggos_metadata_account.hatch_date = Clock::get().unwrap().unix_timestamp;
 
+        let newData = Data {
+            name: String::from("hi"),
+            symbol: String::from("darggos"),
+            uri: String::from("https://google.com"),
+            seller_fee_basis_points: 40,
+            creators: None,
+        };
+
+        let ix = update_metadata_accounts(
+            ctx.accounts.token_metadata_program.key(),
+            ctx.accounts.metadata.key(),
+            ctx.accounts.update_authority.key(),
+            None,
+            Some(newData),
+            None,
+        );
+        solana_program::program::invoke_signed(
+            &ix,
+            &[ctx.accounts.metadata.clone(), ctx.accounts.update_authority.clone()],
+            &[&[b"update_authority", &[draggos_metadata_account_bump]]],
+        )?;
+
         Ok(())
     }
 }
@@ -66,6 +100,11 @@ pub struct Deposit<'info> {
     )]
     pub draggos_metadata_account: Account<'info, DraggosMetadata>,
     pub system_program: Program<'info, System>,
+    #[account(mut)]
+    pub metadata: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+    #[account(address = spl_token_metadata::id())]
+    pub token_metadata_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -93,6 +132,8 @@ pub struct CreateDraggosMetadata<'info> {
     pub draggos_metadata_account: Account<'info, DraggosMetadata>,
     pub system_program: Program<'info, System>,
 }
+
+
 
 #[derive(Accounts)]
 #[instruction(capacity: u8, bump: u8)]
@@ -185,7 +226,7 @@ impl<'info> Deposit<'info> {
 */
 #[error]
 pub enum IncubatorError {
-    #[msg("This list is full")]
+    #[msg("This incubator is full")]
     IncubatorFull,
     #[msg("Invalid metadata account")]
     MetadataAccountNotFound,
