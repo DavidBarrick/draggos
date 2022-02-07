@@ -1,32 +1,35 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, CloseAccount, Mint, SetAuthority, TokenAccount, Transfer};
-use controller::program::Controller;
+use anchor_spl::token::{Mint, TokenAccount};
 
 use spl_token_metadata::{
-    instruction::{update_metadata_accounts, CreateMetadataAccountArgs, MetadataInstruction},
-    state::{Creator, Data},
+    instruction::{update_metadata_accounts},
+    state::{Metadata},
 };
 
 use anchor_lang::solana_program::{
     self,
-    instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
-    sysvar,
 };
 
-declare_id!("6nc6StbnJGQYZaCtJPtsJd7fvuFfJyXdLitpoufY6V86");
+declare_id!("ApvUM9JNBz1idd1MZ2E2YhYaFhPygkfoUY82fwEjwPFC");
 pub const METAPLEX_PROGRAM_ID: &'static str = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 
 #[program]
 pub mod incubator {
     use super::*;
-
-    pub fn initialize(ctx: Context<Initialize>, capacity: u8, bump: u8) -> ProgramResult {
+ 
+    pub fn initialize(ctx: Context<Initialize>, capacity: u8, bump: u8, update_authority_bump: u8) -> ProgramResult {
         let incubator = &mut ctx.accounts.incubator;
+        let update_authority = &mut ctx.accounts.update_authority;
+
         incubator.bump = bump;
         incubator.capacity = capacity;
         incubator.authority = *ctx.accounts.authority.key;
         incubator.next_index = 0;
+
+        update_authority.bump = update_authority_bump;
+        update_authority.authority = *ctx.accounts.authority.key;
+
         Ok(())
     }
 
@@ -38,38 +41,38 @@ pub mod incubator {
         Ok(())
     }
 
-    pub fn deposit(ctx: Context<Deposit>, draggos_metadata_account_bump: u8) -> ProgramResult {
+    pub fn deposit(ctx: Context<Deposit>, _draggos_metadata_bump: u8, update_authority_bump: u8) -> ProgramResult {
         let incubator = &mut ctx.accounts.incubator;
         let draggos_metadata_account = &mut ctx.accounts.draggos_metadata_account;
 
         if draggos_metadata_account.hatched {
-            return Err(IncubatorError::AlreadyHatched.into());
+            //return Err(IncubatorError::AlreadyHatched.into());
         }
 
         incubator.next_index += 1;
         draggos_metadata_account.hatched = true;
-        draggos_metadata_account.hatch_date = Clock::get().unwrap().unix_timestamp;
+        draggos_metadata_account.hatched_date = Clock::get().unwrap().unix_timestamp;
+        draggos_metadata_account.hatched_batch = 5;
 
-        let newData = Data {
-            name: String::from("hi"),
-            symbol: String::from("darggos"),
-            uri: String::from("https://google.com"),
-            seller_fee_basis_points: 40,
-            creators: None,
-        };
+        let metdata_account = Metadata::from_account_info(&ctx.accounts.metadata)?;
+        
+        let hatched_metadata_data = &mut metdata_account.data.clone();
+        hatched_metadata_data.uri = draggos_metadata_account.uri.clone();
 
         let ix = update_metadata_accounts(
             ctx.accounts.token_metadata_program.key(),
             ctx.accounts.metadata.key(),
             ctx.accounts.update_authority.key(),
             None,
-            Some(newData),
+            Some(hatched_metadata_data.clone()),
             None,
         );
+        
+        let authority_seeds = &[&b"incubator_v0"[..], &b"update_authority"[..], &[update_authority_bump]];
         solana_program::program::invoke_signed(
             &ix,
-            &[ctx.accounts.metadata.clone(), ctx.accounts.update_authority.clone()],
-            &[&[b"update_authority", &[draggos_metadata_account_bump]]],
+            &[ctx.accounts.metadata.to_account_info(), ctx.accounts.update_authority.to_account_info()],
+            &[&authority_seeds[..]],
         )?;
 
         Ok(())
@@ -77,7 +80,7 @@ pub mod incubator {
 }
 
 #[derive(Accounts)]
-#[instruction(draggos_metadata_account_bump: u8)]
+#[instruction(draggos_metadata_bump: u8, update_authority_bump: u8)]
 pub struct Deposit<'info> {
     pub authority: Signer<'info>,
     #[account(
@@ -89,26 +92,38 @@ pub struct Deposit<'info> {
     )]
     pub incubator: Account<'info, Incubator>,
     #[account(
-        init,
+        mut,
         seeds = [
             b"incubator_v0".as_ref(),
-            b"metadata".as_ref()
+            b"metadata".as_ref(),
+            mint.key().as_ref()
         ],
-        bump = draggos_metadata_account_bump,
-        payer = authority,
-        space = 1000
+        bump = draggos_metadata_bump,
     )]
     pub draggos_metadata_account: Account<'info, DraggosMetadata>,
-    pub system_program: Program<'info, System>,
     #[account(mut)]
     pub metadata: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
+    pub mint: Account<'info, Mint>,
+    #[account(
+        seeds = [
+            b"incubator_v0".as_ref(),
+            b"update_authority".as_ref()
+        ],
+        bump = update_authority_bump,
+    )]
+    pub update_authority: Account<'info, UpdateAuthority>,
     #[account(address = spl_token_metadata::id())]
     pub token_metadata_program: AccountInfo<'info>,
+    #[account(
+        constraint = token_account.owner == *authority.key,
+        constraint = token_account.mint == mint.key()
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-#[instruction(draggos_metadata_account_bump: u8)]
+#[instruction(draggos_metadata_bump: u8, uri: String)]
 pub struct CreateDraggosMetadata<'info> {
     pub authority: Signer<'info>,
     #[account(
@@ -123,20 +138,20 @@ pub struct CreateDraggosMetadata<'info> {
         init,
         seeds = [
             b"incubator_v0".as_ref(),
-            b"metadata".as_ref()
+            b"metadata".as_ref(),
+            &mint.key.to_bytes()
         ],
-        bump = draggos_metadata_account_bump,
+        bump = draggos_metadata_bump,
         payer = authority,
         space = 1000
     )]
     pub draggos_metadata_account: Account<'info, DraggosMetadata>,
+    pub mint: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
-
-
 #[derive(Accounts)]
-#[instruction(capacity: u8, bump: u8)]
+#[instruction(capacity: u8, bump: u8, update_authority_bump: u8)]
 pub struct Initialize<'info> {
     #[account(
         init,
@@ -148,6 +163,17 @@ pub struct Initialize<'info> {
         space = 10000,
     )]
     pub incubator: Account<'info, Incubator>,
+    #[account(
+        init,
+        seeds = [
+            b"incubator_v0".as_ref(),
+            b"update_authority".as_ref()
+        ],
+        bump = update_authority_bump,
+        payer = authority,
+        space = 1000,
+    )]
+    pub update_authority: Account<'info, UpdateAuthority>,
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -162,28 +188,23 @@ pub struct Incubator {
 }
 
 #[account]
+pub struct UpdateAuthority {
+    pub authority: Pubkey,
+    pub bump: u8,
+}
+
+#[account]
 pub struct DraggosMetadata {
     pub mint: Pubkey,
     pub hatched: bool,
-    pub hatch_date: i64,
-    pub hatch_batch: u64,
+    pub hatched_date: i64,
+    pub hatched_batch: u64,
     pub bump: u8,
     pub uri: String
 }
 
 
-/* 
-#[account]
-pub struct Metadata {
-    pub key: Pubkey,
-    pub update_authority: Pubkey,
-    pub mint: Pubkey,
-    pub data: Data,
-    pub primary_sale_happened: bool,
-    pub is_mutable: bool,
-    pub edition_nonce: Option<u8>,
-}
-
+/*
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Egg {
     pub owner: Pubkey,
@@ -192,22 +213,7 @@ pub struct Egg {
     //pub mint_account: Pubkey,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Data {
-    pub name: String,
-    pub symbol: String,
-    pub uri: String,
-    pub seller_fee_basis_points: u16,
-    pub creators: Option<Vec<Creator>>,
-}
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Creator {
-    pub address: Pubkey,
-    pub verified: bool,
-    // In percentages, NOT basis points ;) Watch out!
-    pub share: u8,
-}
 
 impl<'info> Deposit<'info> {
     fn into_hatch(

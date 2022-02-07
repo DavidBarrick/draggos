@@ -7,11 +7,11 @@ import path from "path";
 
 //new anchor.BN(0).toArrayLike(Buffer),
 
+let cm2id = "H7xL44dQh7Z14tfupfjMF6EVCCiSSTd449jbqEfH6b4R";
+const METAPLEX_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
-const devNetConnection = new Connection("https://api.devnet.solana.com", "confirmed")
-
-let cm2id = "RX2KsUUhYSSHLyRB1ax36kmqd8YCzrzKNxhCKitrxo5";
-const METAPLEX_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+const TOKEN_MINT = new PublicKey("5BTia3EVL7Lh8zHARPUhENWRtkf49J1R8CELdv2ZgNX3");
+const TOKEN_ACCOUNT = new PublicKey("HEVKy622BYuTy3pDqKC6DdpNv9P9fZcXBabCziaUcaeS");
 
 describe('incubator', () => {
   const provider = anchor.Provider.env();
@@ -21,9 +21,10 @@ describe('incubator', () => {
   let incubatorSigner = null;
   let user1 = null;
   let user2 = null;
+  let draggosMetadataAccount = null;
 
   async function createUser(userIndex = 0) {
-    let airdropBalance = 2 * LAMPORTS_PER_SOL;
+    //let airdropBalance = 2 * LAMPORTS_PER_SOL;
     const user = Keypair.fromSecretKey(
       Buffer.from(
         JSON.parse(
@@ -34,9 +35,9 @@ describe('incubator', () => {
       )
     );
 
-    //console.log(`User: ${userIndex}: ${user.publicKey.toString()} | ${await getAccountBalance(user.publicKey)}`)
-    let sig = await provider.connection.requestAirdrop(user.publicKey, airdropBalance);
-    await provider.connection.confirmTransaction(sig);
+    console.log(`User: ${userIndex}: ${user.publicKey.toString()} | ${await getAccountBalance(user.publicKey)}`)
+    //let sig = await provider.connection.requestAirdrop(user.publicKey, airdropBalance);
+    //await provider.connection.confirmTransaction(sig);
 
     let wallet = new anchor.Wallet(user);
     let userProvider = new anchor.Provider(provider.connection, wallet, provider.opts);
@@ -57,54 +58,59 @@ describe('incubator', () => {
     const [pda, bump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from("incubator_v0")
     ], mainProgram.programId);
+
+
+    const [updateAuthority, updateAuthorityBump] = await anchor.web3.PublicKey.findProgramAddress([
+      Buffer.from("incubator_v0"),
+      Buffer.from("update_authority"),
+    ], mainProgram.programId);
+
     console.log("Main Program ID: ", mainProgram.programId.toString());
-    console.log("PDA: ", pda.toString());
+    console.log("Incubator PDA  : ", pda.toString());
+    console.log("Update         : ", updateAuthority.toString());
 
 
     let program = programForUser(owner);
-    await program.rpc.initialize(capacity, bump, {
+    await program.rpc.initialize(capacity, bump, updateAuthorityBump, {
       accounts: {
         incubator: pda,
         authority: owner.key.publicKey,
+        updateAuthority: updateAuthority,
         systemProgram: SystemProgram.programId,
-      },
+      }
     });
+
 
     //let incub = await program.account.incubator.fetch(pda);
     return {};
   }
 
-  /*
-    pub incubator: Account<'info, Incubator>,
-    pub owner: Signer<'info>,
-    #[account(
-        has_one = owner
-    )]
-    pub token_account: Account<'info, TokenAccount>,
-    #[account(
-        seeds = [
-            b"metadata",
-            METAPLEX_PROGRAM_ID.as_bytes(),
-            mint_account.key().as_ref()
-        ],
-        bump = metadata_account_bump,
-    )]
-    pub metadata_account: Account<'info, Metadata>,
-    #[account(
-        init,
-        seeds = [
-            b"incubator",
-            mint_account.key().as_ref(),
-            b"metadata"
-        ],
-        bump = draggos_metadata_account_bump,
-        payer = owner,
-        space = 10000,
-    )]
-    pub draggos_metadata_account: Account<'info, DraggosMetadata>,
-    pub mint_account: Account<'info, Mint>,
-    pub system_program: Program<'info, System>,
-  */
+  async function createDraggosMetadata(owner) {
+    const [draggosMetadataPDA, draggosMetadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
+      Buffer.from("incubator_v0"),
+      Buffer.from("metadata"),
+      TOKEN_MINT.toBuffer()
+    ], mainProgram.programId);
+
+    const [pda, bump] = await anchor.web3.PublicKey.findProgramAddress([
+      Buffer.from("incubator_v0")
+    ], mainProgram.programId);
+
+    let program = programForUser(owner);
+    await program.rpc.createMetadataAccount(draggosMetadataPDABump, 'https://arweave.net/psba596QOVEDu2xzb61VSjisWsYXe-jz1-uOnK-WlEI', {
+      accounts: {
+        incubator: pda,
+        authority: owner.key.publicKey,
+        draggosMetadataAccount: draggosMetadataPDA,
+        mint: TOKEN_MINT,
+        systemProgram: SystemProgram.programId,
+      },
+    });
+
+    let meta = await program.account.draggosMetadata.fetch(draggosMetadataPDA);
+    return meta;
+  }
+
   async function depositEgg(owner, token: PublicKey, mint: PublicKey) {
     const [pda, bump] = await PublicKey.findProgramAddress([
       Buffer.from("incubator_v0")
@@ -113,7 +119,10 @@ describe('incubator', () => {
     const [draggosMetadataPDA, draggosMetadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from("incubator_v0"),
       Buffer.from("metadata"),
+      TOKEN_MINT.toBuffer()
     ], mainProgram.programId);
+
+
 
     /*const [metadataPDA, metadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from("metadata"),
@@ -121,20 +130,36 @@ describe('incubator', () => {
       mint.toBuffer(),
     ], METAPLEX_PROGRAM_ID);*/
 
+    const [metadataPDA, metadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
+      Buffer.from("metadata"),
+      METAPLEX_METADATA_PROGRAM_ID.toBuffer(),
+      TOKEN_MINT.toBuffer(),
+    ], METAPLEX_METADATA_PROGRAM_ID);
+
+    const [updateAuthority, updateAuthorityBump] = await anchor.web3.PublicKey.findProgramAddress([
+      Buffer.from("incubator_v0"),
+      Buffer.from("update_authority"),
+    ], mainProgram.programId);
 
     let program = programForUser(owner);
 
-    console.log("Incubator: ", pda.toString());
-    console.log("Owner: ", owner.key.publicKey.toString());
+    //let _u = await program.account.updateAuthority.fetch(updateAuthority);
+    //console.log("DM: ", JSON.stringify(_u));
 
-    await program.rpc.deposit(draggosMetadataPDABump, {
+    console.log("Incubator: ", pda.toString());
+    console.log("Owner    : ", owner.key.publicKey.toString());
+    console.log("Update   : ", updateAuthority.toString());
+
+    await program.rpc.deposit(draggosMetadataPDABump, updateAuthorityBump, {
       accounts: {
         incubator: pda,
         authority: owner.key.publicKey,
-        //tokenAccount: token,
-        //metadataAccount: owner.key.publicKey,
         draggosMetadataAccount: draggosMetadataPDA,
-        //mintAccount: mint,
+        metadata: metadataPDA,
+        mint: TOKEN_MINT,
+        updateAuthority,
+        tokenMetadataProgram: METAPLEX_METADATA_PROGRAM_ID,
+        tokenAccount: TOKEN_ACCOUNT,
         systemProgram: SystemProgram.programId,
       },
     });
@@ -150,15 +175,27 @@ describe('incubator', () => {
     return new anchor.Program(mainProgram.idl, mainProgram.programId, user.provider);
   }
 
-  describe("#equals", async function () {
-    it('creates an incubator', async () => {
+  describe("#incubator", async function () {
+    xit('creates an incubator', async () => {
       incubatorSigner = await createUser();
-      user1 = await createUser(1);
   
   
       let incubator = await createIncubator(incubatorSigner, 5);
-      console.log(JSON.stringify(incubator));
   
+      //expect(list.data.listOwner.toString(), 'List owner is set').equals(owner.key.publicKey.toString());
+      //expect(list.data.name, 'List name is set').equals('A list');
+      //expect(list.data.lines.length, 'List has no items').equals(0);
+    });
+  });
+
+
+  describe("#metadata", async function () {
+    xit('creates a draggos metadata', async () => {
+      if(!incubatorSigner) {
+        incubatorSigner = await createUser();
+      }
+
+      let draggosMetdata = await createDraggosMetadata(incubatorSigner);
   
       //await depositEgg(owner1);
   
@@ -172,7 +209,7 @@ describe('incubator', () => {
   describe("#depsit", async function () {
     it('deposit tokens', async () => {
       if(!user1) {
-        user1 = await createUser(1);
+        user1 = await createUser(2);
       }
 
       /*let { value: tokens = [] } = await provider.connection.getParsedTokenAccountsByOwner(user1.key.publicKey, { programId: TOKEN_PROGRAM_ID });
@@ -184,6 +221,8 @@ describe('incubator', () => {
       console.log(JSON.stringify(newIncubator,null,2))*/
       const newIncubator = await depositEgg(user1, null, null);
       console.log('Updated: ', JSON.stringify(newIncubator,null,2))
+
+
 
     });
   });

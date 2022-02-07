@@ -1,16 +1,14 @@
 [programs.devnet]
-incubator = "6nc6StbnJGQYZaCtJPtsJd7fvuFfJyXdLitpoufY6V86"
-controller = "BPiHhMNtjKkowiC6Yjr9Uf2js1ycCXE3F2SnWcAzNc8a"
+incubator = "ApvUM9JNBz1idd1MZ2E2YhYaFhPygkfoUY82fwEjwPFC"
 
 [programs.localnet]
-incubator = "6nc6StbnJGQYZaCtJPtsJd7fvuFfJyXdLitpoufY6V86"
-controller = "BPiHhMNtjKkowiC6Yjr9Uf2js1ycCXE3F2SnWcAzNc8a"
+incubator = "ApvUM9JNBz1idd1MZ2E2YhYaFhPygkfoUY82fwEjwPFC"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "/Users/davidbarrick/.config/solana/id.json"
 
 [scripts]
