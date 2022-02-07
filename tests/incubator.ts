@@ -10,8 +10,8 @@ import path from "path";
 let cm2id = "H7xL44dQh7Z14tfupfjMF6EVCCiSSTd449jbqEfH6b4R";
 const METAPLEX_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
-const TOKEN_MINT = new PublicKey("5BTia3EVL7Lh8zHARPUhENWRtkf49J1R8CELdv2ZgNX3");
-const TOKEN_ACCOUNT = new PublicKey("HEVKy622BYuTy3pDqKC6DdpNv9P9fZcXBabCziaUcaeS");
+const TOKEN_MINT = new PublicKey("6VybVzPmruwe7dJcet24vc1VMgK81A75cicRcQxD4ogT");
+const TOKEN_ACCOUNT = new PublicKey("BEgMwJErSKHPYLtJhgYeL9pcdrSP5MFAfqe6ATTTZ9QR");
 
 describe('incubator', () => {
   const provider = anchor.Provider.env();
@@ -85,24 +85,24 @@ describe('incubator', () => {
     return {};
   }
 
-  async function createDraggosMetadata(owner) {
+  async function createDraggosMetadata(mint) {
     const [draggosMetadataPDA, draggosMetadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from("incubator_v0"),
       Buffer.from("metadata"),
-      TOKEN_MINT.toBuffer()
+      mint.toBuffer()
     ], mainProgram.programId);
 
     const [pda, bump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from("incubator_v0")
     ], mainProgram.programId);
 
-    let program = programForUser(owner);
-    await program.rpc.createMetadataAccount(draggosMetadataPDABump, 'https://arweave.net/psba596QOVEDu2xzb61VSjisWsYXe-jz1-uOnK-WlEI', {
+    let program = programForUser(incubatorSigner);
+    await program.rpc.createMetadataAccount(draggosMetadataPDABump, 'https://arweave.net/_Nbo0fbgTDt78O_4UHH4QkySFLALagEotC84DmH-EBI', {
       accounts: {
         incubator: pda,
-        authority: owner.key.publicKey,
+        authority: incubatorSigner.key.publicKey,
         draggosMetadataAccount: draggosMetadataPDA,
-        mint: TOKEN_MINT,
+        mint: mint,
         systemProgram: SystemProgram.programId,
       },
     });
@@ -195,7 +195,7 @@ describe('incubator', () => {
         incubatorSigner = await createUser();
       }
 
-      let draggosMetdata = await createDraggosMetadata(incubatorSigner);
+      let draggosMetdata = await createDraggosMetadata(TOKEN_MINT);
   
       //await depositEgg(owner1);
   
@@ -209,7 +209,7 @@ describe('incubator', () => {
   describe("#depsit", async function () {
     it('deposit tokens', async () => {
       if(!user1) {
-        user1 = await createUser(2);
+        user1 = await createUser(4);
       }
 
       /*let { value: tokens = [] } = await provider.connection.getParsedTokenAccountsByOwner(user1.key.publicKey, { programId: TOKEN_PROGRAM_ID });
@@ -221,9 +221,6 @@ describe('incubator', () => {
       console.log(JSON.stringify(newIncubator,null,2))*/
       const newIncubator = await depositEgg(user1, null, null);
       console.log('Updated: ', JSON.stringify(newIncubator,null,2))
-
-
-
     });
   });
 });

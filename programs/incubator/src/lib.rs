@@ -11,7 +11,9 @@ use anchor_lang::solana_program::{
     pubkey::Pubkey,
 };
 
-declare_id!("ApvUM9JNBz1idd1MZ2E2YhYaFhPygkfoUY82fwEjwPFC");
+pub mod state;
+
+declare_id!("HaqhGG52nEhqX2B7gbQhw239pB5ZHiLr8tNP7qrPnYES");
 pub const METAPLEX_PROGRAM_ID: &'static str = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 
 #[program]
@@ -100,7 +102,7 @@ pub struct Deposit<'info> {
         ],
         bump = draggos_metadata_bump,
     )]
-    pub draggos_metadata_account: Account<'info, DraggosMetadata>,
+    pub draggos_metadata_account: Account<'info, state::DraggosMetadata>,
     #[account(mut)]
     pub metadata: AccountInfo<'info>,
     pub mint: Account<'info, Mint>,
