@@ -1,8 +1,10 @@
 [programs.devnet]
 incubator = "HaqhGG52nEhqX2B7gbQhw239pB5ZHiLr8tNP7qrPnYES"
+controller = "2Y2MREyEZpwavdqSpAzCpn27R3pfZuunotjTEnGaSEty"
 
 [programs.localnet]
 incubator = "HaqhGG52nEhqX2B7gbQhw239pB5ZHiLr8tNP7qrPnYES"
+controller = "2Y2MREyEZpwavdqSpAzCpn27R3pfZuunotjTEnGaSEty"
 
 [registry]
 url = "https://anchor.projectserum.com"
