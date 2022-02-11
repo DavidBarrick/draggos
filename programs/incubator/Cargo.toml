@@ -1,12 +1,12 @@
 [package]
-name = "anchor-escrow"
+name = "incubator"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "anchor_escrow"
+name = "incubator"
 
 [features]
 no-entrypoint = []
@@ -19,3 +19,4 @@ default = []
 anchor-lang = "0.19.0"
 anchor-spl = {version = "0.19.0"}
 spl-token = {version = "3.1.1", features = ["no-entrypoint"]}
+spl-token-metadata = { version="0.0.1", features = [ "no-entrypoint" ] }
