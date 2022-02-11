@@ -200,7 +200,7 @@ describe('incubator', () => {
     let incubator = await program.account.incubator.fetch(pda);
 
     let slots = await fetchSlots(incubator.capacity);
-    let slotAccounts = slots.map(s => ({ pubkey: s.address, isWritable: true, isSigner: false }));
+    let slotAccounts = slots.map(s => ({ pubkey: s.address, isWritable: false, isSigner: false }));
 
     let metaplexMetadataAccounts = [];
     let draggosMetadataAccounts = [];
@@ -224,7 +224,17 @@ describe('incubator', () => {
     }
 
     let remainingAccounts = slotAccounts.concat(metaplexMetadataAccounts).concat(draggosMetadataAccounts);
-    
+
+
+    await program.rpc.updateSlot({
+      accounts: {
+        slot: slots[1].address,
+        mint: mint,
+        draggosMetadataAccount: draggosMetadataPDA,
+        metaplexMetadataAccount: metadataPDA,
+        systemProgram: SystemProgram.programId
+      }
+    });
     /*await program.rpc.deposit(updateAuthorityBump, {
       accounts: {
         authority: owner.key.publicKey,
@@ -242,7 +252,7 @@ describe('incubator', () => {
 
     let list = await program.account.incubator.fetch(pda);
     let metadata = await program.account.draggosMetadata.fetch(draggosMetadataPDA);
-    let slot = await program.account.slot.fetch(slots[0].address);
+    let slot = await program.account.slot.fetch(slots[1].address);
 
     return { list, metadata, slot };
   }
@@ -316,7 +326,7 @@ describe('incubator', () => {
 
       let { value: tokens = [] } = await provider.connection.getParsedTokenAccountsByOwner(user1.key.publicKey, { programId: TOKEN_PROGRAM_ID });
       //console.log("Tokens: ", JSON.stringify(tokens.map(t => t.pubkey),null,2));
-      const validToken = tokens[0];
+      const validToken = tokens[1];
 
       const tokenAccount = new PublicKey(validToken.pubkey);
       const tokenMint = new PublicKey(validToken.account.data.parsed.info.mint);

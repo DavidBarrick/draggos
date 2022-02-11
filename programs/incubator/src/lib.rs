@@ -76,6 +76,7 @@ pub mod incubator {
         let remaining_accounts = ctx.remaining_accounts;
         let mint = &ctx.accounts.mint;
         let update_authority = &ctx.accounts.update_authority;
+        let system_program = &ctx.accounts.system_program;
 
         let depositor_metaplex_metadata = Metadata::from_account_info(metaplex_metadata_account).unwrap();
 
@@ -117,7 +118,7 @@ pub mod incubator {
                 let metaplex_metadata_account_slot = &metaplex_metadata_accounts_info[slot.index as usize];
                 let draggos_metadata_account_slot = &draggos_metadata_accounts[slot.index as usize];
 
-                if slot.mint.unwrap() != metaplex_metadata_account_slot.key()  {
+                if slot.mint != metaplex_metadata_account_slot.key()  {
                     return Err(IncubatorError::InvalidSlotMint.into());
                 }
 
@@ -139,61 +140,84 @@ pub mod incubator {
             incubator.mints = Vec::new();
             incubator.current_batch += 1;
         } else {
-            let current_slot = ctx.remaining_accounts.get(incubator.next_index as usize).unwrap();
-            let mut slot: Account<'info, Slot> = Account::try_from(current_slot).unwrap();
+            let current_slot = slot_accounts.get(incubator.next_index as usize).unwrap();
 
-            slot.mint = Some(mint.key().clone());
-            slot.draggos_metadata = Some(draggos_metadata_account.key().clone());
-            slot.metaplex_metadata = Some(metaplex_metadata_account.key().clone());
+            let mut update_slot_accounts = UpdateSlot {
+                slot: current_slot.clone(),
+                mint: mint.clone(),
+                draggos_metadata_account: draggos_metadata_account.clone(),
+                metaplex_metadata_account: metaplex_metadata_account.clone(),
+                system_program: system_program.clone()
+            };
+
+            let update_slot_context = Context::new(ctx.program_id, &mut update_slot_accounts, &[]);
+            update_slot(update_slot_context)?;
 
             incubator.next_index += 1;
         }
 
         Ok(())
     }
-}
 
-fn hatch(ctx: Context<HatchEgg>, metadata: Metadata, update_authority_bump: u8) -> ProgramResult {
-    let incubator = &ctx.accounts.incubator;
-    let draggos_metadata_account = &mut ctx.accounts.draggos_metadata_account;
-    let metaplex_metadata_account = &mut ctx.accounts.metaplex_metadata_account;
-    let update_authority = &ctx.accounts.update_authority;
-    let token_metadata_program = &ctx.accounts.token_metadata_program;
-    let slot = &mut ctx.accounts.slot;
-
-    if draggos_metadata_account.hatched {
-        return Err(IncubatorError::AlreadyHatched.into());
+    pub fn update_slot(ctx: Context<UpdateSlot>) -> ProgramResult {
+        let mint = &ctx.accounts.mint;
+        let draggos_metadata_account = &ctx.accounts.draggos_metadata_account;
+        let metaplex_metadata_account = &ctx.accounts.metaplex_metadata_account;
+    
+        let slot = &mut ctx.accounts.slot;
+    
+        slot.mint = mint.key().clone();
+        slot.draggos_metadata = Some(draggos_metadata_account.key().clone());
+        slot.metaplex_metadata = Some(metaplex_metadata_account.key().clone());
+    
+        Ok(())
     }
 
-    let hatched_metadata_data = &mut metadata.data.clone();
-    hatched_metadata_data.uri = draggos_metadata_account.uri.clone();
-
-    let ix = update_metadata_accounts(
-        token_metadata_program.key().clone(),
-        metaplex_metadata_account.key().clone(),
-        update_authority.key().clone(),
-        None,
-        Some(hatched_metadata_data.clone()),
-        None,
-    );
+    pub fn hatch(ctx: Context<HatchEgg>, metadata: Metadata, update_authority_bump: u8) -> ProgramResult {
+        let incubator = &ctx.accounts.incubator;
+        let draggos_metadata_account = &mut ctx.accounts.draggos_metadata_account;
+        let metaplex_metadata_account = &mut ctx.accounts.metaplex_metadata_account;
+        let update_authority = &ctx.accounts.update_authority;
+        let token_metadata_program = &ctx.accounts.token_metadata_program;
+        let slot = &mut ctx.accounts.slot;
     
-    let authority_seeds = &[&b"incubator_v0"[..], &b"update_authority"[..], &[update_authority_bump]];
-    solana_program::program::invoke_signed(
-        &ix,
-        &[metaplex_metadata_account.to_account_info(), update_authority.to_account_info()],
-        &[&authority_seeds[..]],
-    )?;
-
-    draggos_metadata_account.hatched = true;
-    draggos_metadata_account.hatched_date = Clock::get().unwrap().unix_timestamp;
-    draggos_metadata_account.hatched_batch = incubator.current_batch;
-
-    slot.mint = None;
-    slot.metaplex_metadata = None;
-    slot.draggos_metadata = None;
-
-    Ok(())
+        if draggos_metadata_account.hatched {
+            return Err(IncubatorError::AlreadyHatched.into());
+        }
+    
+        let hatched_metadata_data = &mut metadata.data.clone();
+        hatched_metadata_data.uri = draggos_metadata_account.uri.clone();
+    
+        let ix = update_metadata_accounts(
+            token_metadata_program.key().clone(),
+            metaplex_metadata_account.key().clone(),
+            update_authority.key().clone(),
+            None,
+            Some(hatched_metadata_data.clone()),
+            None,
+        );
+        
+        let authority_seeds = &[&b"incubator_v0"[..], &b"update_authority"[..], &[update_authority_bump]];
+        solana_program::program::invoke_signed(
+            &ix,
+            &[metaplex_metadata_account.to_account_info(), update_authority.to_account_info()],
+            &[&authority_seeds[..]],
+        )?;
+    
+        draggos_metadata_account.hatched = true;
+        draggos_metadata_account.hatched_date = Clock::get().unwrap().unix_timestamp;
+        draggos_metadata_account.hatched_batch = incubator.current_batch;
+    
+        slot.metaplex_metadata = None;
+        slot.draggos_metadata = None;
+    
+        Ok(())
+    }
 }
+
+
+
+
 
 #[derive(Accounts)]
 #[instruction(capacity: u8, bump: u8, update_authority_bump: u8)]
@@ -239,13 +263,31 @@ pub struct ResetIncubator<'info> {
 }
 
 #[derive(Accounts)]
+pub struct UpdateSlot<'info> {
+    #[account(
+        mut,
+        seeds = [
+            b"incubator_v0".as_ref(),
+            b"slot".as_ref(),
+            &[slot.index]
+        ],
+        bump = slot.bump,
+    )]
+    pub slot: Account<'info, Slot>,
+    pub mint: AccountInfo<'info>,
+    pub metaplex_metadata_account: AccountInfo<'info>,
+    pub draggos_metadata_account: Account<'info, DraggosMetadata>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 #[instruction(incubator_bump: u8, slot_bump: u8, slot_index: u8)]
 pub struct CreateSlot<'info> {
     #[account(
         seeds = [
             b"incubator_v0".as_ref()
         ],
-        bump = incubator_bump,
+        bump = incubator.bump,
     )]
     pub incubator: Account<'info, Incubator>,
     #[account(

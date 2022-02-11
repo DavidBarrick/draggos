@@ -27,7 +27,7 @@ pub struct Slot {
     pub incubator: Pubkey,
     pub bump: u8,
     pub index: u8,
-    pub mint: Option<Pubkey>,
+    pub mint: Pubkey,
     pub metaplex_metadata: Option<Pubkey>,
     pub draggos_metadata: Option<Pubkey>,
 }
