@@ -137,26 +137,13 @@ describe('incubator', () => {
     });
   }
 
-    async function resetIncubator() {
+    async function resetIncubator(tokens = []) {
       const [pda, bump] = await anchor.web3.PublicKey.findProgramAddress([
         Buffer.from("incubator_v0")
       ], mainProgram.programId);
       
       const slots = await fetchSlots(4);
-      const draggos_metadatas = [];
       let program = programForUser(incubatorSigner);
-
-      for(const slot of slots) {
-        let s = await program.account.slot.fetch(slot.address);
-
-        const [draggosMetadataPDA, draggosMetadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
-          Buffer.from("incubator_v0"),
-          Buffer.from("metadata"),
-          s.mint.toBuffer()
-        ], mainProgram.programId);
-
-        draggos_metadatas.push(draggosMetadataPDA);
-      }
 
       await program.rpc.resetIncubator({
         accounts: {
@@ -166,11 +153,7 @@ describe('incubator', () => {
           slot1: slots[0].address,
           slot2: slots[1].address,
           slot3: slots[2].address,
-          slot4: slots[3].address,
-          dm1: draggos_metadatas[0],
-          dm2: draggos_metadatas[1],
-          dm3: draggos_metadatas[2],
-          dm4: draggos_metadatas[3],
+          slot4: slots[3].address
         },
       });
 
@@ -274,7 +257,10 @@ describe('incubator', () => {
         tokenMetadataProgram: METAPLEX_METADATA_PROGRAM_ID,
         incubatorProgram: mainProgram.programId
       },
-      remainingAccounts
+      remainingAccounts,
+      instructions: [
+        
+      ]
     });
 
     const tx_destails = await program.provider.connection.getTransaction(tx, { commitment: 'confirmed' });
@@ -298,7 +284,7 @@ describe('incubator', () => {
   }
 
   describe("#incubator", async function () {
-    it('creates an incubator', async () => {
+    xit('creates an incubator', async () => {
       incubatorSigner = await createUser();
   
   
@@ -311,7 +297,7 @@ describe('incubator', () => {
   });
 
   describe("#slots", async function () {
-    it('creates slots', async () => {
+    xit('creates slots', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }
@@ -326,7 +312,7 @@ describe('incubator', () => {
 
 
   describe("#metadata", async function () {
-    it('creates a draggos metadata', async () => {
+    xit('creates a draggos metadata', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }
@@ -373,7 +359,7 @@ describe('incubator', () => {
   });
 
   describe("#reset", async function () {
-    it('reset incubator', async () => {
+    xit('reset incubator', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }
@@ -384,7 +370,7 @@ describe('incubator', () => {
   });
 
   describe("#debug", async function () {
-    it('slots', async () => {
+    xit('slots', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }

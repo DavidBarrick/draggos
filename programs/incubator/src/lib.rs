@@ -58,10 +58,7 @@ pub mod incubator {
         let slot2 = &mut ctx.accounts.slot2;
         let slot3 = &mut ctx.accounts.slot3;
         let slot4 = &mut ctx.accounts.slot4;
-        let dm1 = &mut ctx.accounts.dm1;
-        let dm2 = &mut ctx.accounts.dm2;
-        let dm3 = &mut ctx.accounts.dm3;
-        let dm4 = &mut ctx.accounts.dm4;
+
 
         incubator.mints = Vec::new();
         incubator.next_index = 0;
@@ -82,10 +79,7 @@ pub mod incubator {
         slot4.draggos_metadata = None;
         slot4.insert_date = 0;
 
-        dm1.hatched = false;
-        dm2.hatched = false;
-        dm3.hatched = false;
-        dm4.hatched = false;
+
 
         Ok(())
     }
@@ -275,46 +269,6 @@ pub struct ResetIncubator<'info> {
         bump = slot4.bump,
     )]
     pub slot4: Box<Account<'info, Slot>>,
-    #[account(
-        mut,
-        seeds = [
-            b"incubator_v0".as_ref(),
-            b"metadata".as_ref(),
-            dm1.mint.as_ref()
-        ],
-        bump = dm1.bump,
-    )]
-    pub dm1: Box<Account<'info, DraggosMetadata>>,
-    #[account(
-        mut,
-        seeds = [
-            b"incubator_v0".as_ref(),
-            b"metadata".as_ref(),
-            dm2.mint.as_ref()
-        ],
-        bump = dm2.bump,
-    )]
-    pub dm2: Box<Account<'info, DraggosMetadata>>,
-    #[account(
-        mut,
-        seeds = [
-            b"incubator_v0".as_ref(),
-            b"metadata".as_ref(),
-            dm3.mint.as_ref()
-        ],
-        bump = dm3.bump,
-    )]
-    pub dm3: Box<Account<'info, DraggosMetadata>>,
-    #[account(
-        mut,
-        seeds = [
-            b"incubator_v0".as_ref(),
-            b"metadata".as_ref(),
-            dm4.mint.as_ref()
-        ],
-        bump = dm4.bump,
-    )]
-    pub dm4: Box<Account<'info, DraggosMetadata>>,
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
