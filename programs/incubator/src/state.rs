@@ -30,6 +30,7 @@ pub struct Slot {
     pub mint: Pubkey,
     pub metaplex_metadata: Option<Pubkey>,
     pub draggos_metadata: Option<Pubkey>,
+    pub insert_date: i64,
 }
 
 #[account]

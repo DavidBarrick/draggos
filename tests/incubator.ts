@@ -11,20 +11,29 @@ let cm2id = "H7xL44dQh7Z14tfupfjMF6EVCCiSSTd449jbqEfH6b4R";
 const METAPLEX_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
 const TOKEN_MINT = new PublicKey("6VybVzPmruwe7dJcet24vc1VMgK81A75cicRcQxD4ogT");
-const TOKEN_ACCOUNT = new PublicKey("BEgMwJErSKHPYLtJhgYeL9pcdrSP5MFAfqe6ATTTZ9QR");
+const TOKEN_ACCOUNT = new PublicKey("BEgMwJErSKHPYLtJhgYeL9pcdrSP5MFAfqe6ATTTZ9QR"); 
 
 const MINT_MAP = {
-  "2wFvwcHXGmCiUpRiBx9oqddz3nYTwEKkj8qvMLd7qhJi":"https://bafybeih5i7lktx6o7rjceuqvlxmpqzwfh4nhr322wq5hjncxbicf4fbq2e.ipfs.dweb.link/3228.json",
-  "GpvftPXJ2VfnRFA8bthQze63ryLshJsw1Ui7QoLVdyKA":"https://bafybeih5i7lktx6o7rjceuqvlxmpqzwfh4nhr322wq5hjncxbicf4fbq2e.ipfs.dweb.link/4135.json",
-  "D5S5LFiJhvwbyzQN8ogVqXr4K356jKXyewfMHhc3c2Yr":"https://bafybeih5i7lktx6o7rjceuqvlxmpqzwfh4nhr322wq5hjncxbicf4fbq2e.ipfs.dweb.link/4562.json",
-  "Hg5xhXrEa5ZXnAXiz1JDNA4VwM3Y7aujU4YGWTAFnWrB":"https://bafybeih5i7lktx6o7rjceuqvlxmpqzwfh4nhr322wq5hjncxbicf4fbq2e.ipfs.dweb.link/3592.json",
-  "Cow7xYUaeVUXbarWzvsxC6CqfScHhBG96GSwav3JVpKg":"https://bafybeih5i7lktx6o7rjceuqvlxmpqzwfh4nhr322wq5hjncxbicf4fbq2e.ipfs.dweb.link/894.json"
+  "6QXAQf4YsQTrUwLeGUUf44MbmZ8DFL2Yz94tNdE8GLX8":"https://smr-volume-1.s3.amazonaws.com/assets/899.json",
+  "CgbJ6w5GiZGbVQvtfuZudVzBkgSGmYG6issWcgv57PyT":"https://smr-volume-1.s3.amazonaws.com/assets/898.json",
+  "48BKnMi7g8o2QX7icULHrELQ6aACfX8Bi5yzr9jspSzc":"https://smr-volume-1.s3.amazonaws.com/assets/897.json",
+  "4RBAVfJwJWfjEoZVxTFDGQJ4aLBYtiMyUsK8MnMbLWom":"https://smr-volume-1.s3.amazonaws.com/assets/896.json",
+  "2Q1BvcsnhzpVw5VmETLvoxY6sq4AXYu4iAhJ4nYSaUXy":"https://smr-volume-1.s3.amazonaws.com/assets/895.json",
+  "FUsNqm6dX4nJZVrqXpP5qtXy1JqbabcYy6nKKvPTqxzu":"https://smr-volume-1.s3.amazonaws.com/assets/894.json",
+  "7ZDMygGDtsbAb31UYXrHJkyXDe7YLL5YqGtgwv4WkyMr":"https://smr-volume-1.s3.amazonaws.com/assets/893.json",
+  "12QE12JxbB2SqYCZJ7n8JVhtfwvoJSupKk1KrWhteLjz":"https://smr-volume-1.s3.amazonaws.com/assets/892.json",
+  "8SKFjfW5ckhDmt56oqqVPHsSyeVbouD4mGfxsHDqi2pn":"https://smr-volume-1.s3.amazonaws.com/assets/891.json",
+  "C8zZxfXJmdnnNQdZKxC6Jkhkse5UeVv1QXiRUMNv1UjW":"https://smr-volume-1.s3.amazonaws.com/assets/890.json"
 }
 
 describe('incubator', () => {
   const provider = anchor.Provider.env();
   anchor.setProvider(provider);
   const mainProgram = anchor.workspace.Incubator;
+  const controllerProgram = anchor.workspace.Controller;
+
+  console.log("Incubator : ", mainProgram.programId.toString());
+  console.log("Controller: ", controllerProgram.programId.toString());
 
   let incubatorSigner = null;
   let user1 = null;
@@ -94,6 +103,7 @@ describe('incubator', () => {
         Uint8Array.from([i])
       ], mainProgram.programId);
 
+      //console.log("Slot: ", slotPDA.toString());
       retval.push({ address: slotPDA, bump: slotPDABump });
     }
 
@@ -131,18 +141,42 @@ describe('incubator', () => {
       const [pda, bump] = await anchor.web3.PublicKey.findProgramAddress([
         Buffer.from("incubator_v0")
       ], mainProgram.programId);
-  
+      
+      const slots = await fetchSlots(4);
+      const draggos_metadatas = [];
       let program = programForUser(incubatorSigner);
+
+      for(const slot of slots) {
+        let s = await program.account.slot.fetch(slot.address);
+
+        const [draggosMetadataPDA, draggosMetadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
+          Buffer.from("incubator_v0"),
+          Buffer.from("metadata"),
+          s.mint.toBuffer()
+        ], mainProgram.programId);
+
+        draggos_metadatas.push(draggosMetadataPDA);
+      }
+
       await program.rpc.resetIncubator({
         accounts: {
           incubator: pda,
           authority: incubatorSigner.key.publicKey,
           systemProgram: SystemProgram.programId,
+          slot1: slots[0].address,
+          slot2: slots[1].address,
+          slot3: slots[2].address,
+          slot4: slots[3].address,
+          dm1: draggos_metadatas[0],
+          dm2: draggos_metadatas[1],
+          dm3: draggos_metadatas[2],
+          dm4: draggos_metadatas[3],
         },
       });
 
+
       let incub = await program.account.incubator.fetch(pda);
-      return incub;
+      return { incub };
     }
 
   async function createDraggosMetadata(mint) {
@@ -151,6 +185,7 @@ describe('incubator', () => {
       Buffer.from("metadata"),
       mint.toBuffer()
     ], mainProgram.programId);
+    console.log("Create DM: ", draggosMetadataPDA.toString());
 
     const [pda, bump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from("incubator_v0")
@@ -194,13 +229,15 @@ describe('incubator', () => {
       Buffer.from("incubator_v0"),
       Buffer.from("update_authority"),
     ], mainProgram.programId);
-    console.log("Update         : ", updateAuthority.toString());
+    console.log("Update     : ", updateAuthority.toString());
+    console.log("Incubator  : ", pda.toString());
 
     let program = programForUser(owner);
+    let controllerProgramUser = controllerProgramForUser(owner);
     let incubator = await program.account.incubator.fetch(pda);
 
     let slots = await fetchSlots(incubator.capacity);
-    let slotAccounts = slots.map(s => ({ pubkey: s.address, isWritable: false, isSigner: false }));
+    let slotAccounts = slots.map(s => ({ pubkey: s.address, isWritable: true, isSigner: false }));
 
     let metaplexMetadataAccounts = [];
     let draggosMetadataAccounts = [];
@@ -219,23 +256,13 @@ describe('incubator', () => {
         mint.toBuffer()
       ], mainProgram.programId);
 
-      metaplexMetadataAccounts.push({ pubkey: metaplexMetadataPDA, isWritable: false, isSigner: false });
-      draggosMetadataAccounts.push({ pubkey: draggosMetadataPDA, isWritable: false, isSigner: false });
+      metaplexMetadataAccounts.push({ pubkey: metaplexMetadataPDA, isWritable: true, isSigner: false });
+      draggosMetadataAccounts.push({ pubkey: draggosMetadataPDA, isWritable: true, isSigner: false });
     }
 
     let remainingAccounts = slotAccounts.concat(metaplexMetadataAccounts).concat(draggosMetadataAccounts);
 
-
-    await program.rpc.updateSlot({
-      accounts: {
-        slot: slots[1].address,
-        mint: mint,
-        draggosMetadataAccount: draggosMetadataPDA,
-        metaplexMetadataAccount: metadataPDA,
-        systemProgram: SystemProgram.programId
-      }
-    });
-    /*await program.rpc.deposit(updateAuthorityBump, {
+    const tx = await controllerProgramUser.rpc.depositController(updateAuthorityBump, {
       accounts: {
         authority: owner.key.publicKey,
         incubator: pda,
@@ -245,28 +272,37 @@ describe('incubator', () => {
         updateAuthority,
         tokenAccount: token,
         tokenMetadataProgram: METAPLEX_METADATA_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
+        incubatorProgram: mainProgram.programId
       },
       remainingAccounts
-    });*/
+    });
 
-    let list = await program.account.incubator.fetch(pda);
+    const tx_destails = await program.provider.connection.getTransaction(tx, { commitment: 'confirmed' });
+
+    console.log(`TX: ${tx}`);
+    console.log(tx_destails.meta.logMessages);
+
+    let incub = await program.account.incubator.fetch(pda);
     let metadata = await program.account.draggosMetadata.fetch(draggosMetadataPDA);
-    let slot = await program.account.slot.fetch(slots[1].address);
+    let slot = await program.account.slot.fetch(slots[2].address);
 
-    return { list, metadata, slot };
+    return { incubator: incub, metadata, slot };
   }
 
   function programForUser(user) {
     return new anchor.Program(mainProgram.idl, mainProgram.programId, user.provider);
   }
 
+  function controllerProgramForUser(user) {
+    return new anchor.Program(controllerProgram.idl, controllerProgram.programId, user.provider);
+  }
+
   describe("#incubator", async function () {
-    xit('creates an incubator', async () => {
+    it('creates an incubator', async () => {
       incubatorSigner = await createUser();
   
   
-      let incubator = await createIncubator(incubatorSigner, 3);
+      let incubator = await createIncubator(incubatorSigner, 4);
   
       //expect(list.data.listOwner.toString(), 'List owner is set').equals(owner.key.publicKey.toString());
       //expect(list.data.name, 'List name is set').equals('A list');
@@ -274,13 +310,13 @@ describe('incubator', () => {
     });
   });
 
-  describe("#incubator", async function () {
-    xit('creates slots', async () => {
+  describe("#slots", async function () {
+    it('creates slots', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }
   
-      await createSlots(incubatorSigner, 3);
+      await createSlots(incubatorSigner, 4);
   
       //expect(list.data.listOwner.toString(), 'List owner is set').equals(owner.key.publicKey.toString());
       //expect(list.data.name, 'List name is set').equals('A list');
@@ -290,22 +326,22 @@ describe('incubator', () => {
 
 
   describe("#metadata", async function () {
-    xit('creates a draggos metadata', async () => {
+    it('creates a draggos metadata', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }
 
       if(!user1) {
-        user1 = await createUser(10);
+        user1 = await createUser(9);
       }
 
       let { value: tokens = [] } = await provider.connection.getParsedTokenAccountsByOwner(user1.key.publicKey, { programId: TOKEN_PROGRAM_ID });
 
       for(const token of tokens) {
         const tokenMint = new PublicKey(token.account.data.parsed.info.mint);
-        console.log("Tokens: ", tokenMint.toString());
+        //console.log("Tokens: ", tokenMint.toString());
         let draggosMetdata = await createDraggosMetadata(tokenMint);
-        console.log("Created Metadata: ", JSON.stringify(draggosMetdata,null,2));
+        //console.log("Created Metadata: ", JSON.stringify(draggosMetdata,null,2));
       }
 
   
@@ -321,28 +357,65 @@ describe('incubator', () => {
   describe("#depsit", async function () {
     it('deposit tokens', async () => {
       if(!user1) {
-        user1 = await createUser(10);
+        user1 = await createUser(9);
       }
 
       let { value: tokens = [] } = await provider.connection.getParsedTokenAccountsByOwner(user1.key.publicKey, { programId: TOKEN_PROGRAM_ID });
       //console.log("Tokens: ", JSON.stringify(tokens.map(t => t.pubkey),null,2));
-      const validToken = tokens[1];
-
-      const tokenAccount = new PublicKey(validToken.pubkey);
-      const tokenMint = new PublicKey(validToken.account.data.parsed.info.mint);
-      const res = await depositEgg(user1, tokenAccount, tokenMint);
-      console.log('Updated: ', JSON.stringify(res,null,2));
+      let t = tokens.slice(0,4);
+      for(const token of t) {
+        const tokenAccount = new PublicKey(token.pubkey);
+        const tokenMint = new PublicKey(token.account.data.parsed.info.mint);
+        const res = await depositEgg(user1, tokenAccount, tokenMint);
+        //console.log('Updated: ', JSON.stringify(res, null, 2));
+      }
     });
   });
 
-  describe("#depsit", async function () {
-    xit('reset incubator', async () => {
+  describe("#reset", async function () {
+    it('reset incubator', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }
 
       const res = await resetIncubator();
-      console.log('Updated: ', JSON.stringify(res,null,2));
+      //console.log('Updated: ', JSON.stringify(res,null,2));
+    });
+  });
+
+  describe("#debug", async function () {
+    it('slots', async () => {
+      if(!incubatorSigner) {
+        incubatorSigner = await createUser();
+      }
+
+      if(!user1) {
+        user1 = await createUser(9);
+      }
+
+
+      const program = programForUser(incubatorSigner);
+      const slots = await fetchSlots(4);
+
+
+      let { value: tokens = [] } = await provider.connection.getParsedTokenAccountsByOwner(user1.key.publicKey, { programId: TOKEN_PROGRAM_ID });
+      //console.log("Tokens: ", JSON.stringify(tokens.map(t => t.pubkey),null,2));
+      for(const token of tokens) {
+        const tokenAccount = new PublicKey(token.pubkey);
+        const tokenMint = new PublicKey(token.account.data.parsed.info.mint);
+        const [draggosMetadataPDA, draggosMetadataPDABump] = await anchor.web3.PublicKey.findProgramAddress([
+          Buffer.from("incubator_v0"),
+          Buffer.from("metadata"),
+          tokenMint.toBuffer()
+        ], mainProgram.programId);
+        let metadata = await program.account.draggosMetadata.fetch(draggosMetadataPDA);
+        console.log('Meta: ', JSON.stringify(metadata,null,2));
+      }
+
+      for(const s of slots) {
+        let slot = await program.account.slot.fetch(s.address);
+        console.log(`Slot: ${JSON.stringify(slot,null,2)}`);
+      }
     });
   });
 });

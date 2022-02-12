@@ -1,10 +1,10 @@
 [programs.devnet]
-incubator = "GJ285g95ZVgCKLhQUA6LYDzwqzQbgq3cR2GpsA5N1ChZ"
-controller = "8kwMagr5CdrKA3aEUYpZ8xzY6Zb8mX98db3YrKHjWidC"
+incubator = "2zmbDv3c8ni15u6LTt4mNDXu9NmQ6RfpgggpZ59DvP3T"
+controller = "2QPGAb8c9gyZvYKg3kPbBLh4dtNWfWQQwjYdfKLCFMJo"
 
 [programs.localnet]
-incubator = "GJ285g95ZVgCKLhQUA6LYDzwqzQbgq3cR2GpsA5N1ChZ"
-controller = "8kwMagr5CdrKA3aEUYpZ8xzY6Zb8mX98db3YrKHjWidC"
+incubator = "2zmbDv3c8ni15u6LTt4mNDXu9NmQ6RfpgggpZ59DvP3T"
+controller = "2QPGAb8c9gyZvYKg3kPbBLh4dtNWfWQQwjYdfKLCFMJo"
 
 [registry]
 url = "https://anchor.projectserum.com"
