@@ -41,7 +41,7 @@ describe('incubator', () => {
   let draggosMetadataAccount = null;
 
   async function createUser(userIndex = 0) {
-    //let airdropBalance = 2 * LAMPORTS_PER_SOL;
+    let airdropBalance = 2 * LAMPORTS_PER_SOL;
     const user = Keypair.fromSecretKey(
       Buffer.from(
         JSON.parse(
@@ -52,9 +52,9 @@ describe('incubator', () => {
       )
     );
 
+    let sig = await provider.connection.requestAirdrop(user.publicKey, airdropBalance);
+    await provider.connection.confirmTransaction(sig);
     console.log(`User: ${userIndex}: ${user.publicKey.toString()} | ${await getAccountBalance(user.publicKey)}`)
-    //let sig = await provider.connection.requestAirdrop(user.publicKey, airdropBalance);
-    //await provider.connection.confirmTransaction(sig);
 
     let wallet = new anchor.Wallet(user);
     let userProvider = new anchor.Provider(provider.connection, wallet, provider.opts);
@@ -82,8 +82,8 @@ describe('incubator', () => {
         Buffer.from("incubator_v0")
       ], mainProgram.programId);
 
-      console.log(`Create Slot: ${slot.address} | ${slot.bump}`);
-      await program.rpc.createSlot(incubatorBump, slot.bump, i, {
+      console.log(`Create Slot: ${slot.index}`);
+      await program.rpc.createSlot(slot.index, {
         accounts: {
           incubator: incubatorPDA,
           slot: slot.address,
@@ -104,7 +104,7 @@ describe('incubator', () => {
       ], mainProgram.programId);
 
       //console.log("Slot: ", slotPDA.toString());
-      retval.push({ address: slotPDA, bump: slotPDABump });
+      retval.push({ address: slotPDA, bump: slotPDABump, index: i });
     }
 
     return retval;
@@ -121,17 +121,37 @@ describe('incubator', () => {
       Buffer.from("update_authority"),
     ], mainProgram.programId);
 
+    const [depositAuthority] = await anchor.web3.PublicKey.findProgramAddress([
+      Buffer.from("incubator_v0"),
+      Buffer.from("deposit_authority"),
+    ], controllerProgram.programId);
+
     console.log("Main Program ID: ", mainProgram.programId.toString());
     console.log("Incubator PDA  : ", pda.toString());
     console.log("Update         : ", updateAuthority.toString());
+    console.log("Deposit        : ", depositAuthority.toString());
+    console.log("Controller     : ", controllerProgram.programId.toString());
 
+
+    let cProgram = controllerProgramForUser(owner);
+    await cProgram.rpc.createDepositAuthority({
+      accounts: {
+        authority: owner.key.publicKey,
+        depositAuthority: depositAuthority,
+        systemProgram: SystemProgram.programId,
+      },
+    });
+
+    console.log("Creatred DA");
 
     let program = programForUser(owner);
-    await program.rpc.createIncubator(capacity, bump, updateAuthorityBump, {
+    await program.rpc.createIncubator({
       accounts: {
         incubator: pda,
         authority: owner.key.publicKey,
         updateAuthority: updateAuthority,
+        depositAuthority: depositAuthority,
+        controllerProgram: controllerProgram.programId,
         systemProgram: SystemProgram.programId,
       },
     });
@@ -177,7 +197,7 @@ describe('incubator', () => {
     const uri = MINT_MAP[mint.toString()];
 
     let program = programForUser(incubatorSigner);
-    await program.rpc.createDraggosMetadata(draggosMetadataPDABump, uri, {
+    await program.rpc.createDraggosMetadata(uri, {
       accounts: {
         incubator: pda,
         authority: incubatorSigner.key.publicKey,
@@ -284,7 +304,7 @@ describe('incubator', () => {
   }
 
   describe("#incubator", async function () {
-    xit('creates an incubator', async () => {
+    it('creates an incubator', async () => {
       incubatorSigner = await createUser();
   
   
@@ -297,7 +317,7 @@ describe('incubator', () => {
   });
 
   describe("#slots", async function () {
-    xit('creates slots', async () => {
+    it('creates slots', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }
@@ -312,7 +332,7 @@ describe('incubator', () => {
 
 
   describe("#metadata", async function () {
-    xit('creates a draggos metadata', async () => {
+    it('creates a draggos metadata', async () => {
       if(!incubatorSigner) {
         incubatorSigner = await createUser();
       }
@@ -341,7 +361,7 @@ describe('incubator', () => {
 
 
   describe("#depsit", async function () {
-    it('deposit tokens', async () => {
+    xit('deposit tokens', async () => {
       if(!user1) {
         user1 = await createUser(9);
       }

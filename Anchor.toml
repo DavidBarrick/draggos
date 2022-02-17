@@ -10,7 +10,7 @@ controller = "2QPGAb8c9gyZvYKg3kPbBLh4dtNWfWQQwjYdfKLCFMJo"
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "/Users/davidbarrick/.config/solana/id.json"
 
 [scripts]
