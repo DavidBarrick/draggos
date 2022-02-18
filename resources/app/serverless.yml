@@ -14,15 +14,14 @@
 service: draggos-app-deployment
 
 configValidationMode: error
-variablesResolutionMode: '20210326'
 
 custom:
-  SECRETS: ${ssm:/aws/reference/secretsmanager/draggos-deployment-${self:provider.stage}}
-  S3_BUCKET: ${self:custom.SECRETS.APP_S3_BUCKET}
-  ACM_CERTIFICATE_ARN: ${self:custom.SECRETS.APP_ACM_CERTIFICATE_ARN}
-  GITHUB_REPO: ${self:custom.SECRETS.GITHUB_REPO}
-  BASE_REF: ${self:custom.SECRETS.BASE_REF}
-  SOURCE_VERSION: ${self:custom.SECRETS.SOURCE_VERSION}
+  secrets: ${ssm:/aws/reference/secretsmanager/draggos-deployment-${self:provider.stage}~true}
+  S3_BUCKET: ${self:custom.secrets.APP_S3_BUCKET}
+  ACM_CERTIFICATE_ARN: ${self:custom.secrets.APP_ACM_CERTIFICATE_ARN}
+  GITHUB_REPO: ${self:custom.secrets.GITHUB_REPO}
+  BASE_REF: ${self:custom.secrets.BASE_REF}
+  SOURCE_VERSION: ${self:custom.secrets.SOURCE_VERSION}
 
 provider:
   name: aws
@@ -48,7 +47,7 @@ resources:
               Value: !Ref CFDistribution
           Image: 'aws/codebuild/standard:4.0'
           Type: LINUX_CONTAINER
-        Name: !Sub '${AWS::StackName}'
+        Name: ${self:service}-${self:provider.stage}
         QueuedTimeoutInMinutes: 60
         ServiceRole:
           Fn::GetAtt: [DeployRole, Arn]
@@ -69,7 +68,7 @@ resources:
                 Pattern: ${self:custom.BASE_REF}
                 Type: BASE_REF
               - ExcludeMatchedPattern: false
-                Pattern: app/*
+                Pattern: ^app/*
                 Type: FILE_PATH
           Webhook: true
     S3BucketBuild:
@@ -103,7 +102,12 @@ resources:
             - Effect: 'Allow'
               Action: 's3:GetObject'
               Principal: '*'
-              Resource: !Sub '${S3BucketRoot.Arn}/*'
+              Resource:
+                - Fn::Join:
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref S3BucketRoot
+                      - '/*'
     CFDistribution:
       Type: AWS::CloudFront::Distribution
       Properties:
@@ -131,7 +135,7 @@ resources:
                 Forward: none
               QueryString: true
             MaxTTL: 31536000
-            TargetOriginId: !Sub 'S3-${AWS::StackName}-root'
+            TargetOriginId: 'S3-${self:service}-${self:provider.stage}-root'
             ViewerProtocolPolicy: 'redirect-to-https'
           DefaultRootObject: index.html
           Enabled: true
@@ -139,7 +143,7 @@ resources:
             - S3OriginConfig:
                 OriginAccessIdentity: ''
               DomainName: !GetAtt S3BucketRoot.DomainName
-              Id: !Sub 'S3-${AWS::StackName}-root'
+              Id: 'S3-${self:service}-${self:provider.stage}-root'
           ViewerCertificate:
             AcmCertificateArn: ${self:custom.ACM_CERTIFICATE_ARN}
             SslSupportMethod: sni-only
