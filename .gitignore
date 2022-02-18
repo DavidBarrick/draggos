@@ -8,4 +8,4 @@ target
 node_modules
 config.json
 .cache
-test-ledger/*
+test-ledger
