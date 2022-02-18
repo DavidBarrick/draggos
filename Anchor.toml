@@ -1,11 +1,16 @@
+[programs.devnet]
+incubator = "99S2c1t1rWiRN2sw8zEtyuwtbToqj7pZ9zuDha1N83o3"
+controller = "4fLNdQ1L55KeCFS1Z82kLr2UkvxnDGQgs9jp7fQua7yR"
+
 [programs.localnet]
-anchor_escrow = "4NjAF5e2x7q8hViEe85baePpSkD9r8sNB35SqKbp349u"
+incubator = "99S2c1t1rWiRN2sw8zEtyuwtbToqj7pZ9zuDha1N83o3"
+controller = "4fLNdQ1L55KeCFS1Z82kLr2UkvxnDGQgs9jp7fQua7yR"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "/Users/davidbarrick/.config/solana/id.json"
 
 [scripts]

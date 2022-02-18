@@ -1,6 +1,11 @@
 
 .anchor
+.serverless
 .DS_Store
+.keypairs
 target
 **/*.rs.bk
 node_modules
+config.json
+.cache
+test-ledger/*

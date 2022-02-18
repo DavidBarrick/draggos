@@ -1,0 +1,224 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: draggos-app-deployment
+
+configValidationMode: error
+
+custom:
+  secrets: ${ssm:/aws/reference/secretsmanager/draggos-deployment-${self:provider.stage}~true}
+  S3_BUCKET: ${self:custom.secrets.APP_S3_BUCKET}
+  ACM_CERTIFICATE_ARN: ${self:custom.secrets.APP_ACM_CERTIFICATE_ARN}
+  GITHUB_REPO: ${self:custom.secrets.GITHUB_REPO}
+  BASE_REF: ${self:custom.secrets.BASE_REF}
+  SOURCE_VERSION: ${self:custom.secrets.SOURCE_VERSION}
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'dev'}
+
+resources:
+  Resources:
+    CodeBuild:
+      Type: AWS::CodeBuild::Project
+      Properties:
+        Artifacts:
+          Type: NO_ARTIFACTS
+        BadgeEnabled: false
+        Description: Build pipeline for draggos
+        Environment:
+          ComputeType: BUILD_GENERAL1_LARGE
+          EnvironmentVariables:
+            - Name: S3_BUCKET
+              Type: PLAINTEXT
+              Value: ${self:custom.S3_BUCKET}
+            - Name: CF_DISTRIBUTION_ID
+              Type: PLAINTEXT
+              Value: !Ref CFDistribution
+          Image: 'aws/codebuild/standard:4.0'
+          Type: LINUX_CONTAINER
+        Name: ${self:service}-${self:provider.stage}
+        QueuedTimeoutInMinutes: 60
+        ServiceRole:
+          Fn::GetAtt: [DeployRole, Arn]
+        Source:
+          Auth:
+            Type: OAUTH
+          Location: ${self:custom.GITHUB_REPO}
+          ReportBuildStatus: true
+          Type: GITHUB
+        SourceVersion: ${self:custom.SOURCE_VERSION}
+        TimeoutInMinutes: 10
+        Triggers:
+          FilterGroups:
+            - - ExcludeMatchedPattern: false
+                Pattern: PULL_REQUEST_MERGED
+                Type: EVENT
+              - ExcludeMatchedPattern: false
+                Pattern: ${self:custom.BASE_REF}
+                Type: BASE_REF
+              - ExcludeMatchedPattern: false
+                Pattern: ^app/*
+                Type: FILE_PATH
+          Webhook: true
+    S3BucketBuild:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.S3_BUCKET}-build
+    S3BucketRoot:
+      Type: AWS::S3::Bucket
+      DeletionPolicy: Retain
+      Properties:
+        AccessControl: PublicRead
+        BucketName: ${self:custom.S3_BUCKET}
+        VersioningConfiguration:
+          Status: Enabled
+        WebsiteConfiguration:
+          ErrorDocument: '404.html'
+          IndexDocument: 'index.html'
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - '*'
+              AllowedMethods:
+                - GET
+    S3BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref S3BucketRoot
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Action: 's3:GetObject'
+              Principal: '*'
+              Resource:
+                - Fn::Join:
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref S3BucketRoot
+                      - '/*'
+    CFDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Aliases:
+            - ${self:custom.S3_BUCKET}
+          CustomErrorResponses:
+            - ErrorCachingMinTTL: 60
+              ErrorCode: 404
+              ResponseCode: 200
+              ResponsePagePath: '/index.html'
+          DefaultCacheBehavior:
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            CachedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            Compress: true
+            DefaultTTL: 86400
+            ForwardedValues:
+              Cookies:
+                Forward: none
+              QueryString: true
+            MaxTTL: 31536000
+            TargetOriginId: 'S3-${self:service}-${self:provider.stage}-root'
+            ViewerProtocolPolicy: 'redirect-to-https'
+          DefaultRootObject: index.html
+          Enabled: true
+          Origins:
+            - S3OriginConfig:
+                OriginAccessIdentity: ''
+              DomainName: !GetAtt S3BucketRoot.DomainName
+              Id: 'S3-${self:service}-${self:provider.stage}-root'
+          ViewerCertificate:
+            AcmCertificateArn: ${self:custom.ACM_CERTIFICATE_ARN}
+            SslSupportMethod: sni-only
+    DeployRole:
+      Type: 'AWS::IAM::Role'
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - codebuild.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+        Path: /
+        ManagedPolicyArns:
+          - !Ref DeployPolicy
+    DeployPolicy:
+      Type: AWS::IAM::ManagedPolicy
+      Properties:
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Sid: AllowToDeployToS3
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:PutObjectAcl
+                - s3:GetObject
+                - s3:GetObjectVersion
+                - s3:GetBucketVersioning
+              Resource:
+                - Fn::Join:
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref S3BucketRoot
+                      - '/*'
+                - Fn::Join:
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref S3BucketBuild
+                      - '/*'
+            - Sid: AllowAllCloudFrontPermissions
+              Effect: Allow
+              Action:
+                - cloudfront:*
+              Resource:
+                - '*'
+            - Sid: StopCodeBuild
+              Effect: Allow
+              Action:
+                - codebuild:StopBuild
+                - codebuild:DeleteProject
+              Resource:
+                - '*'
+            - Sid: AllowLogs
+              Effect: Allow
+              Action:
+                - logs:*
+              Resource:
+                - arn:aws:logs:*:*:log-group:/aws/codebuild/*
+  Outputs:
+    CdnBucket:
+      Value:
+        Ref: S3BucketRoot
+    BuildBucket:
+      Value:
+        Ref: S3BucketBuild
+    CdnBucketArn:
+      Value:
+        Fn::GetAtt: [S3BucketRoot, Arn]
+    DeployRoleArn:
+      Value:
+        Fn::GetAtt: [DeployRole, Arn]
+    CloudFrontId:
+      Value:
+        Ref: CFDistribution
