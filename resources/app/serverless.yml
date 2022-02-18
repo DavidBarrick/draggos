@@ -11,15 +11,15 @@
 #
 # Happy Coding!
 
-service: draggos-website-deployment
+service: draggos-app-deployment
 
 configValidationMode: error
 variablesResolutionMode: '20210326'
 
 custom:
   SECRETS: ${ssm:/aws/reference/secretsmanager/draggos-deployment-${self:provider.stage}}
-  S3_BUCKET: ${self:custom.SECRETS.WEBSITE_S3_BUCKET}
-  ACM_CERTIFICATE_ARN: ${self:custom.SECRETS.WEBSITE_ACM_CERTIFICATE_ARN}
+  S3_BUCKET: ${self:custom.SECRETS.APP_S3_BUCKET}
+  ACM_CERTIFICATE_ARN: ${self:custom.SECRETS.APP_ACM_CERTIFICATE_ARN}
   GITHUB_REPO: ${self:custom.SECRETS.GITHUB_REPO}
   BASE_REF: ${self:custom.SECRETS.BASE_REF}
   SOURCE_VERSION: ${self:custom.SECRETS.SOURCE_VERSION}

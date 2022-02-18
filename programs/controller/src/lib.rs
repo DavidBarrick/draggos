@@ -24,8 +24,8 @@ pub mod controller {
 
     pub fn deposit_controller<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, DepositController<'info>>) -> ProgramResult {
         let incubator = &ctx.accounts.incubator;
-        let depositor_draggos_metadata_account = &mut ctx.accounts.draggos_metadata_account;
-        let depositor_metaplex_metadata_account = &ctx.accounts.metaplex_metadata_account;
+        let draggos_metadata = &mut ctx.accounts.draggos_metadata;
+        let token_metadata = &ctx.accounts.token_metadata;
         let remaining_accounts = ctx.remaining_accounts;
         let depositor_mint = &ctx.accounts.mint;
         let deposit_authority = &ctx.accounts.deposit_authority;
@@ -45,8 +45,8 @@ pub mod controller {
             let deposit_incubator_accounts = incubator::cpi::accounts::DepositIncubator {
                 slot: current_slot.to_account_info().clone(),
                 mint: depositor_mint.clone(),
-                draggos_metadata_account: depositor_draggos_metadata_account.to_account_info().clone(),
-                metaplex_metadata_account: depositor_metaplex_metadata_account.clone(),
+                draggos_metadata: draggos_metadata.to_account_info().clone(),
+                token_metadata: token_metadata.clone(),
                 incubator: incubator.to_account_info().clone(),
                 authority: deposit_authority.to_account_info().clone()
             };
@@ -92,9 +92,9 @@ pub struct DepositController<'info> {
     pub incubator: Account<'info, Incubator>,
     pub incubator_program: AccountInfo<'info>,
     #[account(mut)]
-    pub draggos_metadata_account: Account<'info, DraggosMetadata>,
+    pub draggos_metadata: Account<'info, DraggosMetadata>,
     #[account(mut)]
-    pub metaplex_metadata_account: AccountInfo<'info>,
+    pub token_metadata: AccountInfo<'info>,
     #[account(
         seeds = [
             b"incubator_v0".as_ref(),
