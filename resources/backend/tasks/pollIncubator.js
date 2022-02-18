@@ -117,6 +117,7 @@ const hatchSlot = async ({ program, incubator_pda, slot_address, slot, signer} )
             tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID
         }
     });
+    
     console.log("Hatch TX: ", tx);
 
     try {
@@ -136,6 +137,7 @@ const resetIncubator = async ({ program, incubator_pda, signer, slots }) => {
         },
         remainingAccounts: slots.map(s => ({ pubkey: s, isMutable: false, isSigner: false }))
     });
+
     console.log("Reset TX: ", tx);
 
     try {

@@ -1,18 +1,29 @@
 use anchor_lang::prelude::*;
 
 use mpl_token_metadata::{
-    instruction::{update_metadata_accounts_v2},
-    state::{Metadata, DataV2},
+    instruction::{ 
+        update_metadata_accounts_v2 
+    },
+    state::{ 
+        Metadata, 
+        DataV2 
+    }
 };
 
 use anchor_lang::solana_program::{
     self,
-    pubkey::Pubkey,
+    pubkey::Pubkey
 };
 
-use state::{ Incubator, UpdateAuthority, DraggosMetadata, Slot, IncubatorError, IncubatorState };
-
 pub mod state;
+use state::{ 
+    Incubator, 
+    UpdateAuthority, 
+    DraggosMetadata, 
+    Slot, 
+    IncubatorError, 
+    IncubatorState 
+};
 
 declare_id!("99S2c1t1rWiRN2sw8zEtyuwtbToqj7pZ9zuDha1N83o3");
 
@@ -28,6 +39,7 @@ pub mod incubator {
 
         let (deposit_authority_pda, _) = Pubkey::find_program_address(&[b"incubator_v0".as_ref(), b"deposit_authority".as_ref()], &controller_program.key());
 
+        //Check to make sure the deposit_authority we passed in is the PDA our controller program owns
         if deposit_authority_pda != deposit_authority.key() {
             return Err(IncubatorError::InvalidDepositAuthority.into());
         }
@@ -38,6 +50,39 @@ pub mod incubator {
 
         update_authority.bump = *ctx.bumps.get("update_authority").unwrap();
         update_authority.authority = *ctx.accounts.authority.key;
+
+        Ok(())
+    }
+
+    //Safely reset incubator to receive new deposits
+    pub fn reset_incubator<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, ResetIncubator<'info>>) -> ProgramResult {
+        let incubator = &mut ctx.accounts.incubator;
+        let authority = &ctx.accounts.authority;
+
+        let capacity = incubator.slots.len();
+        let slot_account_infos = &ctx.remaining_accounts[..capacity];
+
+        let slot_accounts = slot_account_infos.iter().map(|a| {
+            let slot: Account<'info, Slot> = Account::try_from(a).unwrap();
+            slot
+        }).collect::<Vec<_>>();
+
+        if incubator.authority != authority.key() {
+            return Err(IncubatorError::InvalidAuthority.into());
+        } else if incubator.state != IncubatorState::Hatching {
+            return Err(IncubatorError::InvalidIncubatorState.into());
+        } else if incubator.slots.len() != slot_accounts.len() {
+            return Err(IncubatorError::InvalidSlotCountForReset.into());
+        }
+
+        let unhatched_slot = slot_accounts.iter().find(|&x| !x.mint.is_none());
+        if !unhatched_slot.is_none() {
+            return Err(IncubatorError::InvalidResetUnhatchedSlots.into());
+        }
+
+        incubator.mints = Vec::new();
+        incubator.current_batch += 1;
+        incubator.state = IncubatorState::Available;
 
         Ok(())
     }
@@ -105,50 +150,18 @@ pub mod incubator {
         incubator.slots.push(slot.key().clone());
 
         slot.bump = *ctx.bumps.get("slot").unwrap();
-        slot.authority = *ctx.accounts.authority.key;
+        slot.authority = ctx.accounts.authority.key().clone();
         slot.incubator = incubator.key().clone();
         slot.index = next_index;
 
         Ok(())
     }
 
-    pub fn reset_incubator<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, ResetIncubator<'info>>) -> ProgramResult {
-        let incubator = &mut ctx.accounts.incubator;
-        let authority = &ctx.accounts.authority;
-
-        let capacity = incubator.slots.len();
-        let slot_account_infos = &ctx.remaining_accounts[..capacity];
-
-        let slot_accounts = slot_account_infos.iter().map(|a| {
-            let slot: Account<'info, Slot> = Account::try_from(a).unwrap();
-            return slot;
-        }).collect::<Vec<_>>();
-
-        if incubator.authority != authority.key() {
-            return Err(IncubatorError::InvalidAuthority.into());
-        } else if incubator.state != IncubatorState::Hatching {
-            return Err(IncubatorError::InvalidIncubatorState.into());
-        } else if incubator.slots.len() != slot_accounts.len() {
-            return Err(IncubatorError::InvalidSlotCountForReset.into());
-        }
-
-        let unhatched_slot = slot_accounts.iter().find(|&x| !x.mint.is_none());
-        if !unhatched_slot.is_none() {
-            return Err(IncubatorError::InvalidResetUnhatchedSlots.into());
-        }
-
-        incubator.mints = Vec::new();
-        incubator.current_batch += 1;
-        incubator.state = IncubatorState::Available;
-
-        Ok(())
-    }
-
     pub fn create_draggos_metadata(ctx: Context<CreateDraggosMetadata>, uri: String) -> ProgramResult {
+        let incubator = &ctx.accounts.incubator;
         let draggos_metadata_account = &mut ctx.accounts.draggos_metadata_account;
         let mint = &ctx.accounts.mint;
         let authority = &ctx.accounts.authority;
-        let incubator = &ctx.accounts.incubator;
 
         if incubator.authority != authority.key() {
             return Err(IncubatorError::InvalidAuthority.into());
@@ -156,7 +169,7 @@ pub mod incubator {
 
         draggos_metadata_account.bump = *ctx.bumps.get("draggos_metadata_account").unwrap();
         draggos_metadata_account.uri = uri;
-        draggos_metadata_account.authority = *ctx.accounts.authority.key;
+        draggos_metadata_account.authority = ctx.accounts.authority.key().clone();
         draggos_metadata_account.mint = mint.key().clone();
 
         Ok(())
@@ -168,7 +181,7 @@ pub mod incubator {
         let mint = &ctx.accounts.mint;
         let authority = &ctx.accounts.authority;
 
-        if authority.key() != incubator.deposit_authority {
+        if incubator.deposit_authority != authority.key() {
             return Err(IncubatorError::InvalidDepositAuthority.into());
         } else if incubator.mints.len() >= incubator.slots.len() {
             return Err(IncubatorError::IncubatorFull.into());
@@ -238,10 +251,11 @@ pub mod incubator {
         );
 
         let authority_seeds = &[&b"incubator_v0"[..], &b"update_authority"[..], &[update_authority.bump]];
+        let signer_seeds = &[&authority_seeds[..]];
         solana_program::program::invoke_signed(
             &ix,
             &[token_metadata.to_account_info(), update_authority.to_account_info()],
-            &[&authority_seeds[..]],
+            signer_seeds,
         )?;
 
         draggos_metadata.hatched = true;
@@ -322,6 +336,19 @@ pub struct ResetIncubator<'info> {
 }
 
 #[derive(Accounts)]
+pub struct UpdateIncubatorState<'info> {
+    #[account(
+        mut,
+        seeds = [
+            b"incubator_v0".as_ref()
+        ],
+        bump = incubator.bump,
+    )]
+    pub incubator: Account<'info, Incubator>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
 pub struct UpdateMetadataUpdateAuthority<'info> {
     pub authority: Signer<'info>,
     #[account(
@@ -339,19 +366,6 @@ pub struct UpdateMetadataUpdateAuthority<'info> {
     pub token_metadata: AccountInfo<'info>,
     #[account(address = mpl_token_metadata::id())]
     pub token_metadata_program: AccountInfo<'info>
-}
-
-#[derive(Accounts)]
-pub struct UpdateIncubatorState<'info> {
-    #[account(
-        mut,
-        seeds = [
-            b"incubator_v0".as_ref()
-        ],
-        bump = incubator.bump,
-    )]
-    pub incubator: Account<'info, Incubator>,
-    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -378,6 +392,33 @@ pub struct CreateSlot<'info> {
     )]
     pub slot: Account<'info, Slot>,
     pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+
+#[derive(Accounts)]
+pub struct CreateDraggosMetadata<'info> {
+    pub authority: Signer<'info>,
+    #[account(
+        seeds = [
+            b"incubator_v0".as_ref()
+        ],
+        bump = incubator.bump
+    )]
+    pub incubator: Account<'info, Incubator>,
+    #[account(
+        init,
+        seeds = [
+            b"incubator_v0".as_ref(),
+            b"metadata".as_ref(),
+            &mint.key.to_bytes()
+        ],
+        bump,
+        payer = authority,
+        space = 500
+    )]
+    pub draggos_metadata_account: Account<'info, DraggosMetadata>,
+    pub mint: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -456,29 +497,3 @@ pub struct HatchIncubator<'info> {
     pub token_metadata_program: AccountInfo<'info>
 }
 
-#[derive(Accounts)]
-#[instruction(uri: String)]
-pub struct CreateDraggosMetadata<'info> {
-    pub authority: Signer<'info>,
-    #[account(
-        seeds = [
-            b"incubator_v0".as_ref()
-        ],
-        bump = incubator.bump
-    )]
-    pub incubator: Account<'info, Incubator>,
-    #[account(
-        init,
-        seeds = [
-            b"incubator_v0".as_ref(),
-            b"metadata".as_ref(),
-            &mint.key.to_bytes()
-        ],
-        bump,
-        payer = authority,
-        space = 500
-    )]
-    pub draggos_metadata_account: Account<'info, DraggosMetadata>,
-    pub mint: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
-}
