@@ -73,5 +73,9 @@ pub enum IncubatorError {
     #[msg("Invalid hatch authority")]
     InvalidHatchAuthority,
     #[msg("Invalid incubator state")]
-    InvalidIncubatorState
+    InvalidIncubatorState,
+    #[msg("Invalid slot count for reset")]
+    InvalidSlotCountForReset,
+    #[msg("Cannot reset incubator when slot(s) have not hatched")]
+    InvalidResetUnhatchedSlots
 }
