@@ -1,23 +1,22 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{TokenAccount};
 
-use spl_token_metadata::{
-    state::{Metadata},
-};
-
 use anchor_lang::solana_program::{
     pubkey::Pubkey
 };
 
 use incubator::{
-    state::{ Incubator, UpdateAuthority, DraggosMetadata, Slot, IncubatorError }
+    state::{ Incubator, UpdateAuthority, DraggosMetadata, Slot }
 };
 
 pub mod state;
 
-use state::DepositAuthority;
+use state::{
+    DepositAuthority,
+    ControllerError
+};
 
-declare_id!("2QPGAb8c9gyZvYKg3kPbBLh4dtNWfWQQwjYdfKLCFMJo");
+declare_id!("4fLNdQ1L55KeCFS1Z82kLr2UkvxnDGQgs9jp7fQua7yR");
 
 #[program]
 pub mod controller {
@@ -34,22 +33,14 @@ pub mod controller {
         let capacity = incubator.slots.len();
         let slot_accounts_info = &remaining_accounts[..capacity];
 
-        let mut slot_accounts = slot_accounts_info.iter().map(|a| {
+        let slot_accounts = slot_accounts_info.iter().map(|a| {
             let slot: Account<'info, Slot> = Account::try_from(a).unwrap();
             return slot;
         }).collect::<Vec<_>>();
 
-        slot_accounts.sort_by(|a, b| a.index.cmp(&b.index));
-
         let next_index = incubator.mints.len();
-        let capacity = incubator.slots.len();
-
-        if incubator.mints.contains(&depositor_mint.key()) {
-            return Err(IncubatorError::InIncubator.into());
-        }
-
         if next_index < capacity {
-            let current_slot = slot_accounts.get(next_index as usize).unwrap();
+            let current_slot = slot_accounts.iter().find(|&x| x.index == (next_index as u8)).unwrap();
             
             let deposit_incubator_accounts = incubator::cpi::accounts::DepositIncubator {
                 slot: current_slot.to_account_info().clone(),
@@ -68,7 +59,7 @@ pub mod controller {
             );
             incubator::cpi::deposit_incubator(update_slot_context)?;
         } else {
-            return Err(IncubatorError::InvalidAuthority.into());
+            return Err(ControllerError::IncubatorFull.into());
         }
 
         Ok(())
@@ -92,19 +83,17 @@ pub struct HatchEvent {
 
 #[derive(Accounts)]
 pub struct DepositController<'info> {
+    /*
+        None of the incubator accounts need to be validated here 
+        as they will be validated after the CPI
+    */
     pub authority: Signer<'info>,
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub incubator: Account<'info, Incubator>,
     pub incubator_program: AccountInfo<'info>,
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub draggos_metadata_account: Account<'info, DraggosMetadata>,
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub metaplex_metadata_account: AccountInfo<'info>,
     #[account(
         seeds = [
@@ -136,7 +125,7 @@ pub struct CreateDepositAuthority<'info> {
         ],
         bump,
         payer = authority,
-        space = 500
+        space = 100
     )]
     pub deposit_authority: Account<'info, DepositAuthority>,
     pub system_program: Program<'info, System>

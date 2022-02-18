@@ -435,7 +435,7 @@ checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
 name = "controller"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -628,7 +628,7 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "incubator"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",

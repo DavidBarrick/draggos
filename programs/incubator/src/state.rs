@@ -37,12 +37,7 @@ pub struct UpdateAuthority {
     pub bump: u8,
 }
 
-pub struct DepositAuthority {
-    pub authority: Pubkey,
-    pub bump: u8,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum IncubatorState {
     Available,
     Hatching,
@@ -75,4 +70,8 @@ pub enum IncubatorError {
     InvalidDepositAuthority,
     #[msg("Invalid slot index")]
     InvalidSlotIndex,
+    #[msg("Invalid hatch authority")]
+    InvalidHatchAuthority,
+    #[msg("Invalid incubator state")]
+    InvalidIncubatorState
 }
