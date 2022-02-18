@@ -26,7 +26,7 @@ provider:
   name: aws
   runtime: nodejs12.x
   stage: ${opt:stage, 'dev'}
-  memorySize: 1024 # optional, in MB, default is 1024
+  memorySize: 1024
   timeout: 45
   lambdaHashingVersion: '20201221'
   tracing:

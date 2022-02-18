@@ -23,19 +23,19 @@ pub mod controller {
     use super::*;
 
     pub fn deposit_controller<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, DepositController<'info>>) -> ProgramResult {
-        let incubator = &ctx.accounts.incubator;
         let draggos_metadata = &mut ctx.accounts.draggos_metadata;
+        let deposit_authority = &ctx.accounts.deposit_authority;
         let token_metadata = &ctx.accounts.token_metadata;
         let remaining_accounts = ctx.remaining_accounts;
+        let incubator = &ctx.accounts.incubator;
         let depositor_mint = &ctx.accounts.mint;
-        let deposit_authority = &ctx.accounts.deposit_authority;
 
         let capacity = incubator.slots.len();
         let slot_accounts_info = &remaining_accounts[..capacity];
 
         let slot_accounts = slot_accounts_info.iter().map(|a| {
             let slot: Account<'info, Slot> = Account::try_from(a).unwrap();
-            return slot;
+            slot
         }).collect::<Vec<_>>();
 
         let next_index = incubator.mints.len();
@@ -53,11 +53,11 @@ pub mod controller {
 
             let authority_seeds = &[&b"incubator_v0"[..], &b"deposit_authority"[..], &[deposit_authority.bump]];
             let signer_seeds = &[&authority_seeds[..]];
-            let update_slot_context = CpiContext::new_with_signer(
+            let deposit_cpi_context = CpiContext::new_with_signer(
                 ctx.accounts.incubator_program.clone(), deposit_incubator_accounts,
                 signer_seeds
             );
-            incubator::cpi::deposit_incubator(update_slot_context)?;
+            incubator::cpi::deposit_incubator(deposit_cpi_context)?;
         } else {
             return Err(ControllerError::IncubatorFull.into());
         }
@@ -75,24 +75,17 @@ pub mod controller {
     }
 }
 
-#[event]
-pub struct HatchEvent {
-    #[index]
-    pub mint: Pubkey,
-}
-
 #[derive(Accounts)]
 pub struct DepositController<'info> {
-    /*
-        None of the incubator accounts need to be validated here 
-        as they will be validated after the CPI
-    */
     pub authority: Signer<'info>,
+    //Validated in incubator program
     #[account(mut)]
     pub incubator: Account<'info, Incubator>,
     pub incubator_program: AccountInfo<'info>,
+    //Validated in incubator program
     #[account(mut)]
     pub draggos_metadata: Account<'info, DraggosMetadata>,
+    //Validated in incubator program
     #[account(mut)]
     pub token_metadata: AccountInfo<'info>,
     #[account(
@@ -125,7 +118,7 @@ pub struct CreateDepositAuthority<'info> {
         ],
         bump,
         payer = authority,
-        space = 100
+        space = 100 // 32 + 1 + safety room
     )]
     pub deposit_authority: Account<'info, DepositAuthority>,
     pub system_program: Program<'info, System>
