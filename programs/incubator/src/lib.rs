@@ -22,7 +22,12 @@ use state::{
     DraggosMetadata, 
     Slot, 
     IncubatorError, 
-    IncubatorState 
+    IncubatorState ,
+    INCUBATOR_SEED,
+    UPDATE_AUTHORITY_SEED,
+    DEPOSIT_AUTHORITY_SEED,
+    METADATA_SEED,
+    SLOT_SEED
 };
 
 declare_id!("99S2c1t1rWiRN2sw8zEtyuwtbToqj7pZ9zuDha1N83o3");
@@ -37,7 +42,7 @@ pub mod incubator {
         let deposit_authority = &ctx.accounts.deposit_authority;
         let controller_program = &ctx.accounts.controller_program;
 
-        let (deposit_authority_pda, _) = Pubkey::find_program_address(&[b"incubator_v0".as_ref(), b"deposit_authority".as_ref()], &controller_program.key());
+        let (deposit_authority_pda, _) = Pubkey::find_program_address(&[INCUBATOR_SEED, DEPOSIT_AUTHORITY_SEED], &controller_program.key());
 
         //Check to make sure the deposit_authority we passed in is the PDA our controller program owns
         if deposit_authority_pda != deposit_authority.key() {
@@ -125,7 +130,7 @@ pub mod incubator {
             None
         );
 
-        let authority_seeds = &[&b"incubator_v0"[..], &b"update_authority"[..], &[current_update_authority.bump]];
+        let authority_seeds = &[&INCUBATOR_SEED[..], &UPDATE_AUTHORITY_SEED[..], &[current_update_authority.bump]];
         solana_program::program::invoke_signed(
             &ix,
             &[token_metadata.to_account_info(), current_update_authority.to_account_info()],
@@ -250,7 +255,7 @@ pub mod incubator {
             None
         );
 
-        let authority_seeds = &[&b"incubator_v0"[..], &b"update_authority"[..], &[update_authority.bump]];
+        let authority_seeds = &[&INCUBATOR_SEED[..], &UPDATE_AUTHORITY_SEED[..], &[update_authority.bump]];
         let signer_seeds = &[&authority_seeds[..]];
         solana_program::program::invoke_signed(
             &ix,
@@ -261,6 +266,8 @@ pub mod incubator {
         draggos_metadata.hatched = true;
         draggos_metadata.hatched_date = hatched_date;
         draggos_metadata.hatched_batch = incubator.current_batch;
+
+        incubator.hatched_total += 1;
 
         emit!(HatchEvent{
             mint: slot.mint.unwrap().clone(),
@@ -295,7 +302,7 @@ pub struct CreateIncubator<'info> {
     #[account(
         init,
         seeds = [
-            b"incubator_v0".as_ref()
+            INCUBATOR_SEED
         ],
         bump,
         payer = authority,
@@ -306,8 +313,8 @@ pub struct CreateIncubator<'info> {
     #[account(
         init,
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"update_authority".as_ref()
+            INCUBATOR_SEED,
+            UPDATE_AUTHORITY_SEED
         ],
         bump,
         payer = authority,
@@ -326,7 +333,7 @@ pub struct ResetIncubator<'info> {
     #[account(
         mut,
         seeds = [
-            b"incubator_v0".as_ref()
+            INCUBATOR_SEED
         ],
         bump = incubator.bump,
         constraint = incubator.authority == *authority.key
@@ -340,7 +347,7 @@ pub struct UpdateIncubatorState<'info> {
     #[account(
         mut,
         seeds = [
-            b"incubator_v0".as_ref()
+            INCUBATOR_SEED
         ],
         bump = incubator.bump,
     )]
@@ -354,7 +361,7 @@ pub struct UpdateMetadataUpdateAuthority<'info> {
     #[account(
         mut,
         seeds = [
-            b"incubator_v0".as_ref()
+            INCUBATOR_SEED
         ],
         bump = incubator.bump,
         constraint = incubator.authority == *authority.key
@@ -374,7 +381,7 @@ pub struct CreateSlot<'info> {
     #[account(
         mut,
         seeds = [
-            b"incubator_v0".as_ref()
+            INCUBATOR_SEED
         ],
         bump = incubator.bump,
     )]
@@ -382,8 +389,8 @@ pub struct CreateSlot<'info> {
     #[account(
         init,
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"slot".as_ref(),
+            INCUBATOR_SEED,
+            SLOT_SEED,
             &[slot_index]
         ],
         bump,
@@ -401,7 +408,7 @@ pub struct CreateDraggosMetadata<'info> {
     pub authority: Signer<'info>,
     #[account(
         seeds = [
-            b"incubator_v0".as_ref()
+            INCUBATOR_SEED
         ],
         bump = incubator.bump
     )]
@@ -409,8 +416,8 @@ pub struct CreateDraggosMetadata<'info> {
     #[account(
         init,
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"metadata".as_ref(),
+            INCUBATOR_SEED,
+            METADATA_SEED,
             &mint.key.to_bytes()
         ],
         bump,
@@ -428,15 +435,15 @@ pub struct DepositIncubator<'info> {
     #[account(
         mut,
         seeds = [
-            b"incubator_v0".as_ref()
+            INCUBATOR_SEED
         ],
         bump = incubator.bump
     )]
     pub incubator: Account<'info, Incubator>,
     #[account(
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"metadata".as_ref(),
+            INCUBATOR_SEED,
+            METADATA_SEED,
             mint.key().as_ref()
         ],
         bump = draggos_metadata.bump,
@@ -445,8 +452,8 @@ pub struct DepositIncubator<'info> {
     #[account(
         mut,
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"slot".as_ref(),
+            INCUBATOR_SEED,
+            SLOT_SEED,
             &[slot.index]
         ],
         bump = slot.bump,
@@ -462,7 +469,7 @@ pub struct HatchIncubator<'info> {
     #[account(
         mut,
         seeds = [
-            b"incubator_v0".as_ref()
+            INCUBATOR_SEED
         ],
         bump = incubator.bump
     )]
@@ -477,8 +484,8 @@ pub struct HatchIncubator<'info> {
     pub token_metadata: AccountInfo<'info>,
     #[account(
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"update_authority".as_ref()
+            INCUBATOR_SEED,
+            UPDATE_AUTHORITY_SEED
         ],
         bump = update_authority.bump,
     )]
@@ -486,8 +493,8 @@ pub struct HatchIncubator<'info> {
     #[account(
         mut,
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"slot".as_ref(),
+            INCUBATOR_SEED,
+            SLOT_SEED,
             &[slot.index]
         ],
         bump = slot.bump,

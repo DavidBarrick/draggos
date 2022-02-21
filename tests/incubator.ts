@@ -3,7 +3,6 @@ import { PublicKey, Keypair, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import fs from "fs";
 import path from "path";
-import MINT_MAP from "./.keypairs/metadata";
 import assert from "assert";
 
 const MINT_MAP = JSON.parse(
@@ -13,6 +12,9 @@ const MINT_MAP = JSON.parse(
 )
 
 const METAPLEX_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+const INCUBATOR_SEED = "incubator_v0";
+const UPDATE_AUTHORITY_SEED = "update_authority";
+const DEPOSIT_AUTHORITY_SEED = "deposit_authority";
 
 //rust enum used for the program's RPC API.
 const IncubatorState = {
@@ -80,7 +82,7 @@ describe('incubator', () => {
   const createSlots = async (user, capacity: Number) => {
     let program = incubatorProgramForUser(user);
     const [incubator_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0")
+      Buffer.from(INCUBATOR_SEED)
     ], incubatorProgram.programId);
 
     const slots = await fetchSlotPDAs(capacity);
@@ -104,7 +106,7 @@ describe('incubator', () => {
     let retval = [];
     for(let i = 0; i < capacity; i++) {
       const [slot_pda] = await anchor.web3.PublicKey.findProgramAddress([
-        Buffer.from("incubator_v0"),
+        Buffer.from(INCUBATOR_SEED),
         Buffer.from("slot"),
         Uint8Array.from([i])
       ], incubatorProgram.programId);
@@ -117,8 +119,8 @@ describe('incubator', () => {
 
   const createDepositAuthority = async (owner) => {
     const [deposit_authority_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0"),
-      Buffer.from("deposit_authority"),
+      Buffer.from(INCUBATOR_SEED),
+      Buffer.from(DEPOSIT_AUTHORITY_SEED),
     ], controllerProgram.programId);
 
     let program = controllerProgramForUser(owner);
@@ -135,17 +137,17 @@ describe('incubator', () => {
 
   const createIncubator = async (owner) => {
     const [incubator_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0")
+      Buffer.from(INCUBATOR_SEED)
     ], incubatorProgram.programId);
 
     const [update_authority_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0"),
-      Buffer.from("update_authority"),
+      Buffer.from(INCUBATOR_SEED),
+      Buffer.from(UPDATE_AUTHORITY_SEED),
     ], incubatorProgram.programId);
 
     const [deposit_authority_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0"),
-      Buffer.from("deposit_authority"),
+      Buffer.from(INCUBATOR_SEED),
+      Buffer.from(DEPOSIT_AUTHORITY_SEED),
     ], controllerProgram.programId);
 
     console.log("Incubator PDA    : ", incubator_pda.toString());
@@ -169,7 +171,7 @@ describe('incubator', () => {
 
     const resetIncubator = async () => {
       const [incubator_pda] = await anchor.web3.PublicKey.findProgramAddress([
-        Buffer.from("incubator_v0")
+        Buffer.from(INCUBATOR_SEED)
       ], incubatorProgram.programId);
       
       const slots = await fetchSlotPDAs(5);
@@ -189,7 +191,7 @@ describe('incubator', () => {
 
     const updateIncubatorState = async (state) => {
       const [incubator_pda] = await anchor.web3.PublicKey.findProgramAddress([
-        Buffer.from("incubator_v0")
+        Buffer.from(INCUBATOR_SEED)
       ], incubatorProgram.programId);
       
       let program = incubatorProgramForUser(incubatorAuthority);
@@ -206,14 +208,14 @@ describe('incubator', () => {
 
   const createDraggosMetadata = async (mint: PublicKey) => {
     const [draggos_metadata_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0"),
+      Buffer.from(INCUBATOR_SEED),
       Buffer.from("metadata"),
       mint.toBuffer()
     ], incubatorProgram.programId);
     console.log("Draggos Metadata PDA: ", draggos_metadata_pda.toString());
 
     const [incubator_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0")
+      Buffer.from(INCUBATOR_SEED)
     ], incubatorProgram.programId);
 
     const uri = MINT_MAP[mint.toString()];
@@ -233,11 +235,11 @@ describe('incubator', () => {
 
   const depositEgg = async (owner, token: PublicKey, mint: PublicKey) => {
     const [incubator_pda] = await PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0")
+      Buffer.from(INCUBATOR_SEED)
     ], incubatorProgram.programId);
 
     const [draggos_metadata_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0"),
+      Buffer.from(INCUBATOR_SEED),
       Buffer.from("metadata"),
       mint.toBuffer()
     ], incubatorProgram.programId);
@@ -249,13 +251,13 @@ describe('incubator', () => {
     ], METAPLEX_METADATA_PROGRAM_ID);
 
     const [update_authority_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0"),
-      Buffer.from("update_authority"),
+      Buffer.from(INCUBATOR_SEED),
+      Buffer.from(UPDATE_AUTHORITY_SEED),
     ], incubatorProgram.programId);
 
     const [deposit_authority_pda] = await anchor.web3.PublicKey.findProgramAddress([
-      Buffer.from("incubator_v0"),
-      Buffer.from("deposit_authority"),
+      Buffer.from(INCUBATOR_SEED),
+      Buffer.from(DEPOSIT_AUTHORITY_SEED),
     ], controllerProgram.programId);
 
     let incubatorProgramUser = incubatorProgramForUser(owner);
