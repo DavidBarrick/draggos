@@ -6,7 +6,7 @@ use anchor_lang::solana_program::{
 };
 
 use incubator::{
-    state::{ Incubator, UpdateAuthority, DraggosMetadata, Slot }
+    state::{ Incubator, UpdateAuthority, DraggosMetadata, Slot, INCUBATOR_SEED, DEPOSIT_AUTHORITY_SEED }
 };
 
 pub mod state;
@@ -51,7 +51,7 @@ pub mod controller {
                 authority: deposit_authority.to_account_info().clone()
             };
 
-            let authority_seeds = &[&b"incubator_v0"[..], &b"deposit_authority"[..], &[deposit_authority.bump]];
+            let authority_seeds = &[&INCUBATOR_SEED[..], &DEPOSIT_AUTHORITY_SEED[..], &[deposit_authority.bump]];
             let signer_seeds = &[&authority_seeds[..]];
             let deposit_cpi_context = CpiContext::new_with_signer(
                 ctx.accounts.incubator_program.clone(), deposit_incubator_accounts,
@@ -90,8 +90,8 @@ pub struct DepositController<'info> {
     pub token_metadata: AccountInfo<'info>,
     #[account(
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"deposit_authority".as_ref()
+            INCUBATOR_SEED,
+            DEPOSIT_AUTHORITY_SEED
         ],
         bump = deposit_authority.bump,
     )]
@@ -113,8 +113,8 @@ pub struct CreateDepositAuthority<'info> {
     #[account(
         init,
         seeds = [
-            b"incubator_v0".as_ref(),
-            b"deposit_authority".as_ref()
+            INCUBATOR_SEED,
+            DEPOSIT_AUTHORITY_SEED
         ],
         bump,
         payer = authority,

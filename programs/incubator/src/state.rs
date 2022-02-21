@@ -1,11 +1,18 @@
 use anchor_lang::prelude::*;
 
+pub const INCUBATOR_SEED: &[u8] = b"incubator_v0";
+pub const UPDATE_AUTHORITY_SEED: &[u8] = b"update_authority";
+pub const DEPOSIT_AUTHORITY_SEED: &[u8] = b"deposit_authority";
+pub const METADATA_SEED: &[u8] = b"metadata";
+pub const SLOT_SEED: &[u8] = b"slot";
+
 #[account]
 pub struct Incubator {
     pub authority: Pubkey,
     pub deposit_authority: Pubkey,
     pub bump: u8,
     pub current_batch: u16,
+    pub hatched_total: u16,
     pub state: IncubatorState,
     pub mints: Vec<Pubkey>,
     pub slots: Vec<Pubkey>
