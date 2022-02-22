@@ -84,5 +84,7 @@ pub enum IncubatorError {
     #[msg("Invalid slot count for reset")]
     InvalidSlotCountForReset,
     #[msg("Cannot reset incubator when slot(s) have not hatched")]
-    InvalidResetUnhatchedSlots
+    InvalidResetUnhatchedSlots,
+    #[msg("Incubator not ready to hatch")]
+    IncubatorNotReadyToHatch
 }
