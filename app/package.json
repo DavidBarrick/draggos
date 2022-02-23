@@ -29,7 +29,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "REACT_APP_CANDY_MACHINE_ID=\"$npm_candy_machine_id\" REACT_APP_SOLANA_NETWORK=\"$npm_solana_network\" REACT_APP_SOLANA_RPC_HOST=\"$npm_solana_rpc_host\" react-scripts build",
+    "build": "REACT_APP_CANDY_MACHINE_ID=\"$npm_config_CANDY_MACHINE_ID\" REACT_APP_SOLANA_NETWORK=\"$npm_config_SOLANA_NETWORK\" REACT_APP_SOLANA_RPC_HOST=\"$npm_config_SOLANA_RPC_HOST\" react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
