@@ -3,8 +3,15 @@ import * as anchor from "@project-serum/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { candymachine as CandyMachineUtils } from "../utils";
+import { Box, Stack, Text } from "@chakra-ui/react";
+import dayjs from "dayjs";
 
-const Landing = ({ props }) => {
+import Mint from "./Mint";
+import FiftyPercent from "./FiftyPercent";
+import FAQ from "./FAQ";
+import Team from "./Team";
+
+const Landing = ({ connection, candyMachineId, txTimeout }) => {
   const [isUserMinting, setIsUserMinting] = useState(false);
   const [candyMachine, setCandyMachine] = useState(null);
   const [alertState, setAlertState] = useState({
@@ -13,7 +20,6 @@ const Landing = ({ props }) => {
     severity: undefined,
   });
 
-  const rpcUrl = props.rpcHost;
   const wallet = useWallet();
 
   const anchorWallet = useMemo(() => {
@@ -35,28 +41,39 @@ const Landing = ({ props }) => {
 
   const refreshCandyMachineState = useCallback(async () => {
     if (!anchorWallet) {
+      console.log("No wallet connected");
       return;
     }
 
-    if (props.candyMachineId) {
+    if (candyMachineId) {
       try {
         const cndy = await CandyMachineUtils.getCandyMachineState(
           anchorWallet,
-          props.candyMachineId,
-          props.connection
+          candyMachineId,
+          connection
         );
+        console.log(cndy);
+
+        /*if (cndy) {
+          console.log(
+            "Launch Date: ",
+            dayjs.unix(cndy.state.goLiveDate.toNumber()).format()
+          );
+        }*/
+
         setCandyMachine(cndy);
       } catch (e) {
         console.log("There was a problem fetching Candy Machine state");
         console.log(e);
       }
     }
-  }, [anchorWallet, props.candyMachineId, props.connection]);
+  }, [anchorWallet, candyMachineId, connection]);
 
   const onMint = async () => {
     try {
       setIsUserMinting(true);
       document.getElementById("#identity")?.click();
+      console.log(candyMachine);
       if (wallet.connected && candyMachine?.program && wallet.publicKey) {
         const mintTxId = (
           await CandyMachineUtils.mintOneToken(candyMachine, wallet.publicKey)
@@ -67,8 +84,8 @@ const Landing = ({ props }) => {
           status =
             await CandyMachineUtils.awaitTransactionSignatureConfirmation(
               mintTxId,
-              props.txTimeout,
-              props.connection,
+              txTimeout,
+              connection,
               true
             );
         }
@@ -118,75 +135,19 @@ const Landing = ({ props }) => {
 
   useEffect(() => {
     refreshCandyMachineState();
-  }, [
-    anchorWallet,
-    props.candyMachineId,
-    props.connection,
-    refreshCandyMachineState,
-  ]);
+  }, [anchorWallet, candyMachineId, connection, refreshCandyMachineState]);
 
   return (
-    <Container style={{ marginTop: 100 }}>
-      <Container maxWidth="xs" style={{ position: "relative" }}>
-        <Paper
-          style={{ padding: 24, backgroundColor: "#151A1F", borderRadius: 6 }}
-        >
-          {!wallet.connected ? (
-            <ConnectButton>Connect Wallet</ConnectButton>
-          ) : (
-            <>
-              <Header candyMachine={candyMachine} />
-              <MintContainer>
-                {candyMachine?.state.isActive &&
-                candyMachine?.state.gatekeeper &&
-                wallet.publicKey &&
-                wallet.signTransaction ? (
-                  <GatewayProvider
-                    wallet={{
-                      publicKey:
-                        wallet.publicKey ||
-                        new PublicKey(CANDY_MACHINE_PROGRAM),
-                      //@ts-ignore
-                      signTransaction: wallet.signTransaction,
-                    }}
-                    gatekeeperNetwork={
-                      candyMachine?.state?.gatekeeper?.gatekeeperNetwork
-                    }
-                    clusterUrl={rpcUrl}
-                    options={{ autoShowModal: false }}
-                  >
-                    <MintButton
-                      candyMachine={candyMachine}
-                      isMinting={isUserMinting}
-                      onMint={onMint}
-                    />
-                  </GatewayProvider>
-                ) : (
-                  <MintButton
-                    candyMachine={candyMachine}
-                    isMinting={isUserMinting}
-                    onMint={onMint}
-                  />
-                )}
-              </MintContainer>
-            </>
-          )}
-        </Paper>
-      </Container>
-
-      <Snackbar
-        open={alertState.open}
-        autoHideDuration={6000}
-        onClose={() => setAlertState({ ...alertState, open: false })}
-      >
-        <Alert
-          onClose={() => setAlertState({ ...alertState, open: false })}
-          severity={alertState.severity}
-        >
-          {alertState.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+    <Stack spacing={0} w="100%">
+      <Mint
+        onMint={onMint}
+        isUserMinting={isUserMinting}
+        candyMachine={candyMachine}
+      />
+      <FiftyPercent />
+      <FAQ />
+      <Team />
+    </Stack>
   );
 };
 

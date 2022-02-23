@@ -1,5 +1,19 @@
-import candymachine from "./candy-machine";
+import {
+  CANDY_MACHINE_PROGRAM,
+  awaitTransactionSignatureConfirmation,
+  getCandyMachineCreator,
+  getCandyMachineState,
+  mintOneToken,
+  shortenAddress,
+} from "./candymachine";
 
-export default {
-  candymachine,
+const candymachine = {
+  CANDY_MACHINE_PROGRAM,
+  awaitTransactionSignatureConfirmation,
+  getCandyMachineCreator,
+  getCandyMachineState,
+  mintOneToken,
+  shortenAddress,
 };
+
+export { candymachine };
