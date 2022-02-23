@@ -48,6 +48,15 @@ resources:
             - Name: CF_DISTRIBUTION_ID
               Type: PLAINTEXT
               Value: !Ref CFDistribution
+            - Name: CANDY_MACHINE_ID
+              Type: PLAINTEXT
+              Value: ${self:custom.CANDY_MACHINE_ID}
+            - Name: SOLANA_NETWORK
+              Type: PLAINTEXT
+              Value: ${self:custom.SOLANA_NETWORK}
+            - Name: SOLANA_RPC_HOST
+              Type: PLAINTEXT
+              Value: ${self:custom.SOLANA_RPC_HOST}
           Image: "aws/codebuild/standard:4.0"
           Type: LINUX_CONTAINER
         Name: ${self:service}-${self:provider.stage}
