@@ -1,13 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 
-import {
-  MintLayout,
-  TOKEN_PROGRAM_ID,
-  createInitializeMintInstruction,
-  createMintToInstruction,
-  createApproveInstruction,
-  createRevokeInstruction,
-} from "@solana/spl-token";
+import { MintLayout, TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import { sendTransactions } from "./connection";
 
@@ -235,7 +228,7 @@ export const mintOneToken = async (candyMachine, payer) => {
         ),
       programId: TOKEN_PROGRAM_ID,
     }),
-    createInitializeMintInstruction(
+    Token.createInitMintInstruction(
       TOKEN_PROGRAM_ID,
       mint.publicKey,
       0,
@@ -248,7 +241,7 @@ export const mintOneToken = async (candyMachine, payer) => {
       payer,
       mint.publicKey
     ),
-    createMintToInstruction(
+    Token.createMintToInstruction(
       TOKEN_PROGRAM_ID,
       mint.publicKey,
       userTokenAccountAddress,
@@ -318,7 +311,7 @@ export const mintOneToken = async (candyMachine, payer) => {
         );
       if (exists) {
         instructions.push(
-          createApproveInstruction(
+          Token.createApproveInstruction(
             TOKEN_PROGRAM_ID,
             whitelistToken,
             whitelistBurnAuthority.publicKey,
@@ -328,7 +321,12 @@ export const mintOneToken = async (candyMachine, payer) => {
           )
         );
         cleanupInstructions.push(
-          createRevokeInstruction(TOKEN_PROGRAM_ID, whitelistToken, payer, [])
+          Token.createRevokeInstruction(
+            TOKEN_PROGRAM_ID,
+            whitelistToken,
+            payer,
+            []
+          )
         );
       }
     }
@@ -350,7 +348,7 @@ export const mintOneToken = async (candyMachine, payer) => {
     });
 
     instructions.push(
-      createApproveInstruction(
+      Token.createApproveInstruction(
         TOKEN_PROGRAM_ID,
         userPayingAccountAddress,
         transferAuthority.publicKey,
@@ -360,7 +358,7 @@ export const mintOneToken = async (candyMachine, payer) => {
       )
     );
     cleanupInstructions.push(
-      createRevokeInstruction(
+      Token.createRevokeInstruction(
         TOKEN_PROGRAM_ID,
         userPayingAccountAddress,
         payer,
