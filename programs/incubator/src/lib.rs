@@ -60,6 +60,7 @@ pub mod incubator {
     }
 
     //Safely reset incubator to receive new deposits
+    //Possibly remove authority check so anyone can reset incubator if all slots have been hatched 
     pub fn reset_incubator<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, ResetIncubator<'info>>) -> ProgramResult {
         let incubator = &mut ctx.accounts.incubator;
         let authority = &ctx.accounts.authority;
@@ -211,6 +212,7 @@ pub mod incubator {
         Ok(())
     }
 
+    //Possibly remove authority check so anyone can hatch a slot if incubator is ready
     pub fn hatch_incubator(ctx: Context<HatchIncubator>) -> ProgramResult {
         let incubator = &mut ctx.accounts.incubator;
         let draggos_metadata = &mut ctx.accounts.draggos_metadata;
@@ -228,6 +230,8 @@ pub mod incubator {
             return Err(IncubatorError::InvalidSlotMint.into());
         } else if draggos_metadata.mint != slot.mint.unwrap() {
             return Err(IncubatorError::InvalidSlotDraggosMetadata.into());
+        } else if incubator.state != IncubatorState::Hatching {
+            return Err(IncubatorError::IncubatorNotReadyToHatch.into());
         }
         
         let hatched_date = Clock::get().unwrap().unix_timestamp;

@@ -1,8 +1,9 @@
 {
-  "name": "app",
-  "version": "0.1.0",
+  "name": "draggos-app",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@chakra-ui/icons": "^1.1.7",
     "@chakra-ui/react": "^1.8.3",
     "@emotion/react": "^11.8.1",
     "@emotion/styled": "^11.8.1",
@@ -15,17 +16,19 @@
     "@testing-library/jest-dom": "^5.16.1",
     "@testing-library/react": "^12.1.2",
     "@testing-library/user-event": "^13.5.0",
+    "dayjs": "^1.10.7",
     "framer-motion": "^6.2.6",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-router": "^6.2.1",
     "react-router-dom": "^6.2.1",
     "react-scripts": "5.0.0",
+    "stream": "0.0.2",
     "web-vitals": "^2.1.3"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "REACT_APP_CANDY_MACHINE_ID=\"$npm_candy_machine_id\" REACT_APP_SOLANA_NETWORK=\"$npm_solana_network\" REACT_APP_SOLANA_RPC_HOST=\"$npm_solana_rpc_host\" react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
