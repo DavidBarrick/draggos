@@ -11,7 +11,7 @@ const MINT_MAP = JSON.parse(
   })
 )
 
-const METAPLEX_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+const TOKEN_METADATA_PROGRAM = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const INCUBATOR_SEED = "incubator_v0";
 const UPDATE_AUTHORITY_SEED = "update_authority";
 const DEPOSIT_AUTHORITY_SEED = "deposit_authority";
@@ -246,9 +246,9 @@ describe('incubator', () => {
 
     const [token_metadata_pda] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from("metadata"),
-      METAPLEX_METADATA_PROGRAM_ID.toBuffer(),
+      TOKEN_METADATA_PROGRAM.toBuffer(),
       mint.toBuffer(),
-    ], METAPLEX_METADATA_PROGRAM_ID);
+    ], TOKEN_METADATA_PROGRAM);
 
     const [update_authority_pda] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from(INCUBATOR_SEED),
@@ -276,7 +276,7 @@ describe('incubator', () => {
         mint: mint,
         updateAuthority: update_authority_pda,
         tokenAccount: token,
-        tokenMetadataProgram: METAPLEX_METADATA_PROGRAM_ID,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM,
         incubatorProgram: incubatorProgram.programId,
         depositAuthority: deposit_authority_pda
       },
