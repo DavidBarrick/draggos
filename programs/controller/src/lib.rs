@@ -111,7 +111,7 @@ pub struct DepositController<'info> {
     pub update_authority: Account<'info, UpdateAuthority>,
     #[account(
         constraint = token_account.owner == *authority.key,
-        constraint = token_account.mint == mint.key()
+        constraint = token_account.mint == *mint.key
     )]
     pub token_account: Account<'info, TokenAccount>,
     #[account(address = spl_token_metadata::id())]

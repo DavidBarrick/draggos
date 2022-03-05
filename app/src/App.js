@@ -81,7 +81,16 @@ function App() {
                   />
                 }
               ></Route>
-              <Route path="/incubator" element={<Incubator />}></Route>
+              <Route
+                path="/incubator"
+                element={
+                  <Incubator
+                    candyMachineId={candyMachineId}
+                    connection={connection}
+                    txTimeout={txTimeoutInMilliseconds}
+                  />
+                }
+              ></Route>
             </Routes>
           </BrowserRouter>
           <Footer />

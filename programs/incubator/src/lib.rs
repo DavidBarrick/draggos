@@ -40,11 +40,11 @@ pub mod incubator {
         }
 
         incubator.bump = incubator_bump;
-        incubator.authority = *ctx.accounts.authority.key;
+        incubator.authority = ctx.accounts.authority.key().clone();
         incubator.deposit_authority = ctx.accounts.deposit_authority.key().clone();
 
         update_authority.bump = update_authority_bump;
-        update_authority.authority = *ctx.accounts.authority.key;
+        update_authority.authority = ctx.accounts.authority.key().clone();
 
         Ok(())
     }
@@ -457,7 +457,7 @@ pub struct UpdateMetadataUpdateAuthority<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(slot_index: u8)]
+#[instruction(slot_bump: u8, slot_index: u8)]
 pub struct CreateSlot<'info> {
     #[account(
         mut,
@@ -478,7 +478,7 @@ pub struct CreateSlot<'info> {
         payer = authority,
         space = 500,
     )]
-    pub slot: Account<'info, Slot>,
+    pub slot: Account<'info, Slot>, //32 + 32 + 1 + 1 + 32 + buffer room
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }

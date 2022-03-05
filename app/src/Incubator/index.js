@@ -1,14 +1,3 @@
-import logo from "../dl_logo.svg";
+import IncubatorContainer from "./IncubatorContainer";
 
-const Incubator = () => {
-  return (
-    <div>
-      <img src={logo} alt="logo" />
-      <p>
-        <code>draggos incubator 🐲</code>
-      </p>
-    </div>
-  );
-};
-
-export default Incubator;
+export default IncubatorContainer;

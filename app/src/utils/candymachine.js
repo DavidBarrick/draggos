@@ -1,7 +1,7 @@
 import * as anchor from "@project-serum/anchor";
 
 import { MintLayout, TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
-import { SystemProgram } from "@solana/web3.js";
+import { SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from "@solana/web3.js";
 import { sendTransactions } from "./connection";
 
 import {
@@ -16,9 +16,48 @@ export const CANDY_MACHINE_PROGRAM = new anchor.web3.PublicKey(
   "cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ"
 );
 
-const TOKEN_METADATA_PROGRAM_ID = new anchor.web3.PublicKey(
+export const TOKEN_METADATA_PROGRAM_ID = new anchor.web3.PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );
+/*
+interface CandyMachineState {
+  itemsAvailable: number;
+  itemsRedeemed: number;
+  itemsRemaining: number;
+  treasury: anchor.web3.PublicKey;
+  tokenMint: anchor.web3.PublicKey;
+  isSoldOut: boolean;
+  isActive: boolean;
+  isPresale: boolean;
+  isWhitelistOnly: boolean;
+  goLiveDate: anchor.BN;
+  price: anchor.BN;
+  gatekeeper: null | {
+    expireOnUse: boolean;
+    gatekeeperNetwork: anchor.web3.PublicKey;
+  };
+  endSettings: null | {
+    number: anchor.BN;
+    endSettingType: any;
+  };
+  whitelistMintSettings: null | {
+    mode: any;
+    mint: anchor.web3.PublicKey;
+    presale: boolean;
+    discountPrice: null | anchor.BN;
+  };
+  hiddenSettings: null | {
+    name: string;
+    uri: string;
+    hash: Uint8Array;
+  };
+}
+
+export interface CandyMachineAccount {
+  id: anchor.web3.PublicKey;
+  program: anchor.Program;
+  state: CandyMachineState;
+}*/
 
 export const awaitTransactionSignatureConfirmation = async (
   txid,
@@ -121,7 +160,7 @@ export const getCandyMachineState = async (
   connection
 ) => {
   const provider = new anchor.Provider(connection, anchorWallet, {
-    preflightCommitment: "recent",
+    preflightCommitment: "processed",
   });
 
   const idl = await anchor.Program.fetchIdl(CANDY_MACHINE_PROGRAM, provider);
@@ -133,12 +172,6 @@ export const getCandyMachineState = async (
   const itemsRedeemed = state.itemsRedeemed.toNumber();
   const itemsRemaining = itemsAvailable - itemsRedeemed;
 
-  const presale =
-    state.data.whitelistMintSettings &&
-    state.data.whitelistMintSettings.presale &&
-    (!state.data.goLiveDate ||
-      state.data.goLiveDate.toNumber() > new Date().getTime() / 1000);
-
   return {
     id: candyMachineId,
     program,
@@ -147,15 +180,9 @@ export const getCandyMachineState = async (
       itemsRedeemed,
       itemsRemaining,
       isSoldOut: itemsRemaining === 0,
-      isActive:
-        (presale ||
-          state.data.goLiveDate.toNumber() < new Date().getTime() / 1000) &&
-        (state.endSettings
-          ? state.endSettings.endSettingType.date
-            ? state.endSettings.number.toNumber() > new Date().getTime() / 1000
-            : itemsRedeemed < state.endSettings.number.toNumber()
-          : true),
-      isPresale: presale,
+      isActive: false,
+      isPresale: false,
+      isWhitelistOnly: false,
       goLiveDate: state.data.goLiveDate,
       treasury: state.wallet,
       tokenMint: state.tokenMint,
@@ -390,7 +417,7 @@ export const mintOneToken = async (candyMachine, payer) => {
         systemProgram: SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
-        recentBlockhashes: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+        recentBlockhashes: SYSVAR_SLOT_HASHES_PUBKEY,
         instructionSysvarAccount: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
       },
       remainingAccounts:
