@@ -22,6 +22,7 @@ custom:
   INCUBATOR_PROGRAM_ID: ${self:custom.secrets.INCUBATOR_PROGRAM_ID}
   S3_BUCKET: ${self:custom.secrets.S3_BUCKET}
   CANDY_MACHINE_ID: ${self:custom.secrets.CANDY_MACHINE_ID}
+  HEADERS: ${self:custom.secrets.HEADERS}
 
 provider:
   name: aws
@@ -30,6 +31,9 @@ provider:
   memorySize: 1024
   timeout: 45
   lambdaHashingVersion: "20201221"
+  apiGateway:
+    apiKeys:
+      - Draggos-API-${opt:stage, 'dev'}
   tracing:
     lambda: true
   environment:
@@ -42,37 +46,21 @@ provider:
         - Effect: Allow
           Action:
             - s3:GetObject
-            - s3:PutObject
           Resource:
             - arn:aws:s3:::${self:custom.S3_BUCKET}/idl/*
 
 functions:
-  #updateMint:
-  #  handler: tasks/updateMint.handler
-  #  events:
-  #    - http:
-  #        path: mint/{mint}
-  #        method: put
-  #        private: true
-  #        cors:
-  #          origin: '*'
-  #          headers: ${self:custom.HEADERS}
-  #          allowCredentials: false
-  #        authorizer:
-  #          name: authorizer
-  #          arn: ${self:custom.COGNITO_POOL_ARN}
-
-  pollIncubator:
-    handler: tasks/pollIncubator.handler
+  createMetadata:
+    handler: tasks/createMetadata.handler
     environment:
       SECRET_KEY: ${self:custom.SECRET_KEY}
       INCUBATOR_PROGRAM_ID: ${self:custom.INCUBATOR_PROGRAM_ID}
-    #events:
-    #  - schedule: cron(0 /1 * * ? *)
-
-  updateMints:
-    handler: tasks/updateMints.handler
-    environment:
-      CANDY_MACHINE_ID: ${self:custom.CANDY_MACHINE_ID}
-    #events:
-    #  - schedule: cron(0 /1 * * ? *)
+    events:
+      - http:
+          path: mints/{mint}/metadata
+          method: post
+          private: true
+          cors:
+            origin: "*"
+            headers: ${self:custom.HEADERS}
+            allowCredentials: false

@@ -89,7 +89,7 @@ describe('incubator', () => {
     for(let i = 0; i < slots.length; i++) {
       const slot = slots[i]
       console.log(`Create Slot: ${slot.index} | ${slot.address.toString()}`);
-      await program.rpc.createSlot(slot.index, {
+      await program.rpc.createSlot(slot.bump, slot.index, {
         accounts: {
           incubator: incubator_pda,
           slot: slot.address,
@@ -105,26 +105,27 @@ describe('incubator', () => {
   const fetchSlotPDAs = async (capacity: Number) => {
     let retval = [];
     for(let i = 0; i < capacity; i++) {
-      const [slot_pda] = await anchor.web3.PublicKey.findProgramAddress([
+      const [slot_pda, bump] = await anchor.web3.PublicKey.findProgramAddress([
         Buffer.from(INCUBATOR_SEED),
         Buffer.from("slot"),
         Uint8Array.from([i])
       ], incubatorProgram.programId);
 
-      retval.push({ address: slot_pda, index: i });
+      retval.push({ address: slot_pda, bump, index: i });
     }
 
     return retval;
   }
 
   const createDepositAuthority = async (owner) => {
-    const [deposit_authority_pda] = await anchor.web3.PublicKey.findProgramAddress([
+    const [deposit_authority_pda, bump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from(INCUBATOR_SEED),
       Buffer.from(DEPOSIT_AUTHORITY_SEED),
     ], controllerProgram.programId);
 
+    console.log("Create With Owner: ", owner.key.publicKey.toString())
     let program = controllerProgramForUser(owner);
-    await program.rpc.createDepositAuthority({
+    await program.rpc.createDepositAuthority(bump, {
       accounts: {
         authority: owner.key.publicKey,
         depositAuthority: deposit_authority_pda,
@@ -136,11 +137,11 @@ describe('incubator', () => {
   }
 
   const createIncubator = async (owner) => {
-    const [incubator_pda] = await anchor.web3.PublicKey.findProgramAddress([
+    const [incubator_pda, incubator_bump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from(INCUBATOR_SEED)
     ], incubatorProgram.programId);
 
-    const [update_authority_pda] = await anchor.web3.PublicKey.findProgramAddress([
+    const [update_authority_pda, update_authority_bump] = await anchor.web3.PublicKey.findProgramAddress([
       Buffer.from(INCUBATOR_SEED),
       Buffer.from(UPDATE_AUTHORITY_SEED),
     ], incubatorProgram.programId);
@@ -155,7 +156,7 @@ describe('incubator', () => {
     console.log("Deposit Authority: ", deposit_authority_pda.toString());
 
     let program = incubatorProgramForUser(owner);
-    await program.rpc.createIncubator({
+    await program.rpc.createIncubator(incubator_bump, update_authority_bump, {
       accounts: {
         incubator: incubator_pda,
         authority: owner.key.publicKey,
@@ -293,7 +294,7 @@ describe('incubator', () => {
   */
 
   describe("#controller", async () => {
-    it('creates a deposit authority', async () => {
+    xit('creates a deposit authority', async () => {
       if(!incubatorAuthority) {
         incubatorAuthority = await createUser();
       }
@@ -304,7 +305,7 @@ describe('incubator', () => {
   });
 
   describe("#incubator", async () => {
-    it('creates an incubator', async () => {
+    xit('creates an incubator', async () => {
       if(!incubatorAuthority) {
         incubatorAuthority = await createUser();
       }

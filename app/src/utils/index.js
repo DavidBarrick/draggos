@@ -7,6 +7,8 @@ import {
   shortenAddress,
 } from "./candymachine";
 
+import actions from "./actions";
+
 const candymachine = {
   CANDY_MACHINE_PROGRAM,
   awaitTransactionSignatureConfirmation,
@@ -16,4 +18,4 @@ const candymachine = {
   shortenAddress,
 };
 
-export { candymachine };
+export { candymachine, actions };
