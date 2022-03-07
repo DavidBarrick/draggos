@@ -14,22 +14,23 @@
 service: draggos-api
 
 configValidationMode: error
+frameworkVersion: "3"
 
 custom:
-  secrets: ${ssm:/aws/reference/secretsmanager/draggos-${self:provider.stage}~true}
+  secrets: ${ssm:/aws/reference/secretsmanager/draggos-${self:provider.stage}}
   SECRET_KEY: ${self:custom.secrets.SECRET_KEY}
   RPC_URL: ${self:custom.secrets.RPC_URL}
   INCUBATOR_PROGRAM_ID: ${self:custom.secrets.INCUBATOR_PROGRAM_ID}
-  S3_BUCKET: ${self:custom.secrets.S3_BUCKET}
   CANDY_MACHINE_ID: ${self:custom.secrets.CANDY_MACHINE_ID}
   HEADERS: ${self:custom.secrets.HEADERS}
+  S3_BUCKET: ${cf:draggos-app-deployment-${self:provider.stage}.BuildBucket}
 
 provider:
   name: aws
   runtime: nodejs12.x
   stage: ${opt:stage, 'dev'}
   memorySize: 1024
-  timeout: 45
+  timeout: 30
   lambdaHashingVersion: "20201221"
   apiGateway:
     apiKeys:
@@ -47,7 +48,7 @@ provider:
           Action:
             - s3:GetObject
           Resource:
-            - arn:aws:s3:::${self:custom.S3_BUCKET}/idl/*
+            - arn:aws:s3:::${self:custom.S3_BUCKET}/metadata/*
 
 functions:
   createMetadata:
@@ -60,7 +61,4 @@ functions:
           path: mints/{mint}/metadata
           method: post
           private: true
-          cors:
-            origin: "*"
-            headers: ${self:custom.HEADERS}
-            allowCredentials: false
+          cors: true

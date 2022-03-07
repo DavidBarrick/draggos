@@ -40,10 +40,10 @@ const Landing = ({ connection, candyMachineId, txTimeout }) => {
   }, [wallet]);
 
   const refreshCandyMachineState = useCallback(async () => {
-    if (!anchorWallet) {
+    /*if (!anchorWallet) {
       console.log("No wallet connected");
       return;
-    }
+    }*/
 
     if (candyMachineId) {
       try {
@@ -143,6 +143,7 @@ const Landing = ({ connection, candyMachineId, txTimeout }) => {
         onMint={onMint}
         isUserMinting={isUserMinting}
         candyMachine={candyMachine}
+        wallet={anchorWallet}
       />
       <FiftyPercent />
       <FAQ />

@@ -77,7 +77,7 @@ module.exports.handler = async (event = {}) => {
 const updateMints = async (mints = []) => {
   const params = {
     Bucket: S3_BUCKET,
-    Key: "idl/mints.json",
+    Key: "metadata/mints.json",
     Body: JSON.stringify(mints),
   };
 

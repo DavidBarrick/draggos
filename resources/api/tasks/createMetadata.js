@@ -17,6 +17,9 @@ const { Metadata } = require("@metaplex-foundation/mpl-token-metadata");
 const RPC_URL = process.env.RPC_URL;
 const S3_BUCKET = process.env.S3_BUCKET;
 const INCUBATOR_PROGRAM_ID = process.env.INCUBATOR_PROGRAM_ID;
+const SECRET_KEY = process.env.SECRET_KEY;
+
+const INCUBATOR_SEED = "incubator_v0";
 
 module.exports.handler = async (event = {}) => {
   console.log("Event: ", JSON.stringify(event, null, 2));
@@ -32,14 +35,28 @@ module.exports.handler = async (event = {}) => {
       commitment: "confirmed",
     });
     const programId = new PublicKey(INCUBATOR_PROGRAM_ID);
-    Anchor.setProvider(provider);
+    const idl = await Anchor.Program.fetchIdl(programId, provider);
 
     await validateMint(mint);
-    const idl = await fetchIdl();
     const program = new Anchor.Program(idl, programId, provider);
-    await createDraggosMetadata({ mint, program, signer: keypair });
+    const pda = await createDraggosMetadata({ mint, program, signer: keypair });
 
-    return { status: 200, mint };
+    return {
+      statusCode: 200,
+      body: JSON.stringify(
+        {
+          success: true,
+          result: {
+            pda,
+          },
+        },
+        null,
+        2
+      ),
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    };
   } catch (error) {
     return {
       statusCode: error.statusCode || 500,
@@ -48,33 +65,61 @@ module.exports.handler = async (event = {}) => {
         null,
         2
       ),
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
     };
+  }
+};
+
+const checkForExistingMetdata = async ({ draggos_metadata_pda, program }) => {
+  try {
+    await program.account.draggosMetadata.fetch(draggos_metadata_pda);
+    return true;
+  } catch (err) {
+    return false;
   }
 };
 
 const createDraggosMetadata = async ({ mint, program, signer }) => {
   const mintPubkey = new PublicKey(mint);
-
-  const metadataPda = await Metadata.getPDA(mintPubkey);
-  const data = await Metadata.load(program.provider.connection, metadataPda);
-  console.log("Data: ", JSON.stringify(data, null, 2));
-  const [draggos_metadata_pda] = await PublicKey.findProgramAddress(
+  const [draggos_metadata_pda, bump] = await PublicKey.findProgramAddress(
     [
       Buffer.from(INCUBATOR_SEED),
       Buffer.from("metadata"),
       mintPubkey.toBuffer(),
     ],
-    incubatorProgram.programId
+    program.programId
   );
+
+  const exists = await checkForExistingMetdata({
+    draggos_metadata_pda,
+    program,
+  });
+
+  if (exists) {
+    console.log(`Draggos Metadata Already Exists For Mint: ${mint}`);
+    return draggos_metadata_pda.toString();
+  }
+  const metadataPda = await Metadata.getPDA(mintPubkey);
+  const { data } = await Metadata.load(
+    program.provider.connection,
+    metadataPda
+  );
+  console.log("Data: ", JSON.stringify(data, null, 2));
+
+  const index = data.data.name.split("#").pop();
+  const uri = await fetchUri(parseInt(index));
+
   console.log("Draggos Metadata PDA: ", draggos_metadata_pda.toString());
 
   const [incubator_pda] = await PublicKey.findProgramAddress(
     [Buffer.from(INCUBATOR_SEED)],
-    incubatorProgram.programId
+    program.programId
   );
 
-  const uri = MINT_MAP[mintPubkey.toString()];
-  await program.rpc.createDraggosMetadata(uri, {
+  console.log("URI: ", uri);
+  const tx = await program.rpc.createDraggosMetadata(bump, uri, {
     accounts: {
       incubator: incubator_pda,
       authority: signer.publicKey,
@@ -83,12 +128,14 @@ const createDraggosMetadata = async ({ mint, program, signer }) => {
       systemProgram: SystemProgram.programId,
     },
   });
+  console.log("TX: ", tx);
+  return draggos_metadata_pda.toString();
 };
 
 const validateMint = async (mint) => {
   const params = {
     Bucket: S3_BUCKET,
-    Key: "idl/mints.json",
+    Key: "metadata/mints.json",
   };
 
   const { Body } = await s3.getObject(params).promise();
@@ -99,17 +146,18 @@ const validateMint = async (mint) => {
   }
 };
 
-const fetchIdl = async () => {
+const fetchUri = async (index) => {
   const params = {
     Bucket: S3_BUCKET,
-    Key: "idl/incubator.json",
+    Key: "metadata/hatched.json",
   };
 
-  try {
-    const { Body } = await s3.getObject(params).promise();
-    const idl = JSON.parse(Body.toString());
-    return idl;
-  } catch (err) {
-    throw { status: 400, message: `No idl found for incubator program` };
+  const { Body } = await s3.getObject(params).promise();
+  const hatched_uris = JSON.parse(Body.toString());
+
+  if (index > hatched_uris.length) {
+    throw { status: 400, message: `Invalid uri index: ${index}` };
   }
+
+  return hatched_uris[index];
 };

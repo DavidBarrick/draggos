@@ -2,15 +2,12 @@
 /* eslint-disable no-throw-literal */
 /* eslint-disable no-console */
 /* eslint-disable strict */
-const AWS = require("aws-sdk");
-const s3 = new AWS.S3();
 const { Keypair, PublicKey, Connection } = require("@solana/web3.js");
 const Anchor = require("@project-serum/anchor");
 
 const RPC_URL = process.env.RPC_URL;
 const INCUBATOR_PROGRAM_ID = process.env.INCUBATOR_PROGRAM_ID;
 const SECRET_KEY = process.env.SECRET_KEY;
-const S3_BUCKET = process.env.S3_BUCKET;
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
@@ -20,20 +17,20 @@ module.exports.handler = async (event = {}) => {
   console.log("Event: ", JSON.stringify(event, null, 2));
   const connection = new Connection(RPC_URL);
   const keypair = Keypair.fromSecretKey(Buffer.from(JSON.parse(SECRET_KEY)));
-  console.log("Signer: ", keypair.publicKey.toString());
   const wallet = new Anchor.Wallet(keypair);
   const provider = new Anchor.Provider(connection, wallet, {
     commitment: "confirmed",
   });
   const programId = new PublicKey(INCUBATOR_PROGRAM_ID);
-  Anchor.setProvider(provider);
+
+  console.log("Signer: ", keypair.publicKey.toString());
 
   try {
-    const idl = await fetchIdl();
+    const idl = await Anchor.Program.fetchIdl(programId, provider);
     const program = new Anchor.Program(idl, programId, provider);
-    await pollIncubator({ program, signer: keypair });
+    const didHatch = await pollIncubator({ program, signer: keypair });
 
-    return { status: 200 };
+    return { status: 200, didHatch };
   } catch (error) {
     console.error(error);
     return {
@@ -44,21 +41,6 @@ module.exports.handler = async (event = {}) => {
         2
       ),
     };
-  }
-};
-
-const fetchIdl = async () => {
-  const params = {
-    Bucket: S3_BUCKET,
-    Key: "idl/incubator.json",
-  };
-
-  try {
-    const { Body } = await s3.getObject(params).promise();
-    const idl = JSON.parse(Body.toString());
-    return idl;
-  } catch (err) {
-    throw { status: 400, message: `No idl found for incubator program` };
   }
 };
 
@@ -77,7 +59,6 @@ const pollIncubator = async ({ program, signer }) => {
     for (const slot_address of incubator.slots) {
       console.log("Check Slot: ", slot_address.toString());
       const slot = await program.account.slot.fetch(slot_address);
-      console.log("Found Slot: ", JSON.stringify(slot, null, 2));
       if (slot.mint) {
         await hatchSlot({ program, incubator_pda, slot_address, slot, signer });
       }
@@ -93,8 +74,11 @@ const pollIncubator = async ({ program, signer }) => {
         slots: incubator.slots,
       });
     }
+
+    return true;
   } else {
     console.log("Not ready to hatch: ", incubator.state);
+    return false;
   }
 };
 

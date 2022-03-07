@@ -26,6 +26,8 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 
+import { Box, VStack } from "@chakra-ui/react";
+
 // Default styles that can be overridden by your app
 require("@solana/wallet-adapter-react-ui/styles.css");
 
@@ -69,30 +71,34 @@ function App() {
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <Header />
-          <BrowserRouter>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <Landing
-                    candyMachineId={candyMachineId}
-                    connection={connection}
-                    txTimeout={txTimeoutInMilliseconds}
-                  />
-                }
-              ></Route>
-              <Route
-                path="/incubator"
-                element={
-                  <Incubator
-                    candyMachineId={candyMachineId}
-                    connection={connection}
-                    txTimeout={txTimeoutInMilliseconds}
-                  />
-                }
-              ></Route>
-            </Routes>
-          </BrowserRouter>
+          <VStack>
+            <Box w="100%" maxW={"6xl"}>
+              <BrowserRouter>
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      <Landing
+                        candyMachineId={candyMachineId}
+                        connection={connection}
+                        txTimeout={txTimeoutInMilliseconds}
+                      />
+                    }
+                  ></Route>
+                  <Route
+                    path="/incubator"
+                    element={
+                      <Incubator
+                        candyMachineId={candyMachineId}
+                        connection={connection}
+                        txTimeout={txTimeoutInMilliseconds}
+                      />
+                    }
+                  ></Route>
+                </Routes>
+              </BrowserRouter>
+            </Box>
+          </VStack>
           <Footer />
         </WalletModalProvider>
       </WalletProvider>
