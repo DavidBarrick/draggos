@@ -8,6 +8,7 @@ const bs58 = require("bs58");
 const BN = require("bn.js");
 const fs = require("fs");
 const path = require("path");
+const Anchor = require("@project-serum/anchor");
 
 const TOKEN_METADATA_PROGRAM = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
@@ -59,9 +60,9 @@ const CREATOR_ARRAY_START =
   1 +
   4;
 
-const loadFilesystemWallet = () => {
+const loadWallet = (name) => {
   const jsonKeypair = fs.readFileSync(
-    path.join(__dirname, `/.keypairs/devnet.json`),
+    path.join(__dirname, `../tests/.keypairs/${name}.json`),
     {
       encoding: "utf-8",
     }
@@ -90,14 +91,56 @@ const incubatorProgram = () => {
   return new PublicKey(incubatorIdlJson.metadata.address);
 };
 
+const revertCandyMachineAuthority = async () => {
+  const incubatorProgramPubkey = incubatorProgram();
+  const [incubator_pda] = await PublicKey.findProgramAddress(
+    [Buffer.from(INCUBATOR_SEED)],
+    incubatorProgramPubkey
+  );
+
+  const [update_authority_pda] = await PublicKey.findProgramAddress(
+    [Buffer.from(INCUBATOR_SEED), Buffer.from(UPDATE_AUTHORITY_SEED)],
+    incubatorProgramPubkey
+  );
+
+  console.log(
+    "Update Authority: ",
+    JSON.stringify(update_authority_pda.toString())
+  );
+
+  const keypair = loadWallet("user0");
+  console.log("Signer: ", keypair.publicKey.toString());
+  const wallet = new Anchor.Wallet(keypair);
+  const provider = new Anchor.Provider(connection, wallet, {
+    commitment: "confirmed",
+  });
+
+  const idl = await Anchor.Program.fetchIdl(incubatorProgramPubkey, provider);
+  const program = new Anchor.Program(idl, incubatorProgramPubkey, provider);
+
+  const incubator = await program.account.incubator.fetch(incubator_pda);
+  console.log("Incubator: ", JSON.stringify(incubator, null, 2));
+  await program.rpc.revertCandyMachineAuthority({
+    accounts: {
+      incubator: incubator_pda,
+      authority: keypair.publicKey,
+      updateAuthority: update_authority_pda,
+      candyMachine: candyMachineProgram,
+      candyMachineProgram: CANDY_MACHINE_V2_PROGRAM,
+    },
+  });
+};
+
 const updateUpdateAuthority = async (mint, update_authority) => {
   let {
     metadata: { Metadata, UpdateMetadataV2 },
   } = programs;
-  let signer = loadFilesystemWallet();
+  let signer = loadWallet(`devnet`);
   let mintAccount = new PublicKey(mint);
   let metadataAccount = await Metadata.getPDA(mintAccount);
   const metadata = await Metadata.load(connection, metadataAccount);
+
+  console.log("Update Authority: ", metadata.data.updateAuthority);
 
   if (metadata.data.updateAuthority != update_authority.toString()) {
     const updateTx = new UpdateMetadataV2(
@@ -162,11 +205,19 @@ const main = async () => {
     const mints = await getMintAddresses(creator);
     console.log(mints);
     for (const mint of mints) {
-      //await updateUpdateAuthority(mint, UPDATE_AUTHORITY_PDA);
+      await updateUpdateAuthority(mint, UPDATE_AUTHORITY_PDA);
     }
   } catch (err) {
     console.error(err);
   }
 };
+
+/*const main = async () => {
+  try {
+    await revertCandyMachineAuthority();
+  } catch (err) {
+    console.error(err);
+  }
+};*/
 
 main();

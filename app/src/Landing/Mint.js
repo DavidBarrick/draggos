@@ -6,31 +6,50 @@ import {
   VStack,
   Image,
   SimpleGrid,
+  Spinner,
 } from "@chakra-ui/react";
 import draggosGif from "./9CgA.gif";
 import logo from "../dl_logo.svg";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
-const Mint = ({ onMint, isUserMinting, candyMachine }) => {
+const Mint = ({ onMint, isUserMinting, candyMachine, wallet }) => {
   return (
     <Box h="90vh" w="100%" bg="red.400" p={5}>
-      <SimpleGrid minChildWidth="300px" spacing="50px" justify="space-between">
-        <VStack maxW="80%" p={10}>
+      <SimpleGrid minChildWidth="300px" spacing="0px" justify="space-between">
+        <VStack p={10}>
           <Image src={logo} />
           <Image src={draggosGif} />
         </VStack>
         {candyMachine && (
-          <VStack maxW="80%">
+          <VStack justifyContent={"center"} p={10}>
             <Text>
               {candyMachine.state.itemsRemaining}/
               {candyMachine.state.itemsAvailable} remaining
             </Text>
-            <Button
-              isDisabled={candyMachine.state.isSoldOut}
-              isLoading={isUserMinting}
-              onClick={onMint}
-            >
-              {candyMachine.state.isSoldOut ? "Sold Out!" : "Mint"}
-            </Button>
+            {console.log(candyMachine.state.price.toString())}
+            <Text>
+              Price:{" "}
+              {(
+                candyMachine.state.price.toNumber() / LAMPORTS_PER_SOL
+              ).toString()}
+              SOL
+            </Text>
+            {wallet && (
+              <Button
+                w="75%"
+                h="50px"
+                isDisabled={candyMachine.state.isSoldOut}
+                isLoading={isUserMinting}
+                onClick={onMint}
+              >
+                {candyMachine.state.isSoldOut ? "Sold Out!" : "Mint"}
+              </Button>
+            )}
+          </VStack>
+        )}
+        {!candyMachine && (
+          <VStack justifyContent={"center"} p={10}>
+            <Spinner />
           </VStack>
         )}
       </SimpleGrid>

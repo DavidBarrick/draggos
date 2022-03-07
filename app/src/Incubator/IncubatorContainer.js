@@ -21,6 +21,7 @@ const INCUBATOR_PROGRAM = new anchor.web3.PublicKey(
 const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
   const [draggosNfts, setDraggosNfts] = useState([]);
   const [incubator, setIncubator] = useState(null);
+  const [depositingMint, setDepositingMint] = useState(null);
 
   const wallet = useWallet();
 
@@ -86,7 +87,13 @@ const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
       }
       draggo.image = mData.image;
     }
-    setDraggosNfts(draggos.sort());
+    setDraggosNfts(
+      draggos.sort(
+        (a, b) =>
+          parseInt(a.data.name.split("#").pop()) -
+          parseInt(b.data.name.split("#").pop())
+      )
+    );
   }, [anchorWallet, candyMachineId, connection]);
 
   const refreshIncubatorState = useCallback(async () => {
@@ -115,7 +122,16 @@ const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
         return;
       }
 
-      await actions.depositEgg(egg, connection, anchorWallet);
+      setDepositingMint(egg.mint);
+
+      try {
+        await actions.depositEgg(egg, connection, anchorWallet);
+        await refreshIncubatorState();
+      } catch (err) {
+        console.log(err);
+      }
+
+      setDepositingMint(null);
     },
     [anchorWallet, candyMachineId, connection]
   );
@@ -131,24 +147,57 @@ const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
     refreshDraggos,
   ]);
 
-  const renderDraggo = (draggo = {}) => (
-    <VStack p={2} bg="red.200" rounded={"lg"} maxW={"200px"} key={draggo.mint}>
-      <Image rounded={"lg"} src={draggo.image} />
-      <Text textAlign={"center"} w="100%">
-        {draggo.data.name}
-      </Text>
-      {!draggo.hatched && (
-        <Button onClick={() => depositEgg(draggo)}>Deposit</Button>
-      )}
-    </VStack>
-  );
+  const renderDraggo = (draggo = {}) => {
+    const in_incubator = incubator.mints.find(
+      (m) => m.toString() == draggo.mint
+    );
+    const can_hatch = !in_incubator && !draggo.hatched;
+    return (
+      <VStack w="100%" key={draggo.mint}>
+        <VStack shadow={"md"} p={2} bg="gray.100" rounded={"lg"} maxW={"250px"}>
+          <Image rounded={"lg"} src={draggo.image} />
+          <Text textAlign={"center"} w="100%">
+            {draggo.data.name}
+          </Text>
+          {can_hatch && (
+            <Button
+              isLoading={depositingMint == draggo.mint}
+              isDisabled={depositingMint}
+              w="100%"
+              bg="purple.500"
+              color="white"
+              fontWeight={"bold"}
+              onClick={() => depositEgg(draggo)}
+            >
+              Deposit
+            </Button>
+          )}
+          {in_incubator && <Text>In Incubator</Text>}
+        </VStack>
+      </VStack>
+    );
+  };
 
   return (
     <Stack p={5}>
-      <Text>Your Draggos</Text>
-      <SimpleGrid minChildWidth="300px" spacing="50px" justify="space-between">
-        {draggosNfts.map(renderDraggo)}
-      </SimpleGrid>
+      {incubator && (
+        <Box>
+          <Text>Incubator Stats</Text>
+          <Text>
+            {incubator.mints.length} / {incubator.slots.length} slots filled
+          </Text>
+          <Text>Current Batch: {incubator.currentBatch}</Text>
+          <Text>Draggos Hatched: {incubator.hatchedTotal}</Text>
+        </Box>
+      )}
+      <VStack>
+        <Text fontSize={"2xl"} fontWeight="bold">
+          Your Draggos
+        </Text>
+        <SimpleGrid w="100%" minChildWidth="300px" spacing="20px">
+          {draggosNfts.map(renderDraggo)}
+        </SimpleGrid>
+      </VStack>
     </Stack>
   );
 };

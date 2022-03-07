@@ -21,7 +21,7 @@ import { HamburgerIcon, CloseIcon } from "@chakra-ui/icons";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import logo from "../dl_logo.svg";
 
-const Links = ["Twitter", "Discord"];
+const Links = ["Twitter", "Discord", "GitHub"];
 
 const NavLink = ({ children }) => (
   <Link

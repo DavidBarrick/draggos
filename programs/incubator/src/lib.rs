@@ -303,9 +303,8 @@ pub mod incubator {
         Ok(())
     }
 
-    pub fn update_candy_machine_authority(
-        ctx: Context<InternalUpdateCandyMachineAuthority>,
-        new_authority: Pubkey,
+    pub fn revert_candy_machine_authority(
+        ctx: Context<RevertCandyMachineAuthority>,
     ) -> ProgramResult {
         let update_authority = &ctx.accounts.update_authority;
         let candy_machine = &ctx.accounts.candy_machine;
@@ -321,6 +320,7 @@ pub mod incubator {
         let deposit_incubator_accounts = mpl_candy_machine::cpi::accounts::UpdateCandyMachine {
             candy_machine: candy_machine.clone(),
             authority: authority.to_account_info().clone(),
+            //don't need this param
             wallet: candy_machine.clone(),
         };
 
@@ -336,7 +336,7 @@ pub mod incubator {
             signer_seeds,
         );
 
-        mpl_candy_machine::cpi::update_authority(cpi_context, Some(new_authority))?;
+        mpl_candy_machine::cpi::update_authority(cpi_context, Some(incubator.authority))?;
         Ok(())
     }
 }
@@ -415,7 +415,7 @@ pub struct UpdateIncubatorState<'info> {
 }
 
 #[derive(Accounts)]
-pub struct InternalUpdateCandyMachineAuthority<'info> {
+pub struct RevertCandyMachineAuthority<'info> {
     #[account(
         seeds = [
             INCUBATOR_SEED
