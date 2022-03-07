@@ -1,28 +1,25 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{TokenAccount};
+use anchor_spl::token::TokenAccount;
 
-use anchor_lang::solana_program::{
-    pubkey::Pubkey
-};
+use anchor_lang::solana_program::pubkey::Pubkey;
 
-use incubator::{
-    state::{ Incubator, UpdateAuthority, DraggosMetadata, Slot, INCUBATOR_SEED, DEPOSIT_AUTHORITY_SEED }
+use incubator::state::{
+    DraggosMetadata, Incubator, Slot, UpdateAuthority, DEPOSIT_AUTHORITY_SEED, INCUBATOR_SEED,
 };
 
 pub mod state;
 
-use state::{
-    DepositAuthority,
-    ControllerError
-};
+use state::{ControllerError, DepositAuthority};
 
-declare_id!("4fLNdQ1L55KeCFS1Z82kLr2UkvxnDGQgs9jp7fQua7yR");
+declare_id!("7NGqArzJMzzvQQhbETSooJ3KA1CkVopxGmAWnAjHcSqi");
 
 #[program]
 pub mod controller {
     use super::*;
 
-    pub fn deposit_controller<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, DepositController<'info>>) -> ProgramResult {
+    pub fn deposit_controller<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DepositController<'info>>,
+    ) -> ProgramResult {
         let draggos_metadata = &mut ctx.accounts.draggos_metadata;
         let deposit_authority = &ctx.accounts.deposit_authority;
         let token_metadata = &ctx.accounts.token_metadata;
@@ -33,29 +30,40 @@ pub mod controller {
         let capacity = incubator.slots.len();
         let slot_accounts_info = &remaining_accounts[..capacity];
 
-        let slot_accounts = slot_accounts_info.iter().map(|a| {
-            let slot: Account<'info, Slot> = Account::try_from(a).unwrap();
-            slot
-        }).collect::<Vec<_>>();
+        let slot_accounts = slot_accounts_info
+            .iter()
+            .map(|a| {
+                let slot: Account<'info, Slot> = Account::try_from(a).unwrap();
+                slot
+            })
+            .collect::<Vec<_>>();
 
         let next_index = incubator.mints.len();
         if next_index < capacity {
-            let current_slot = slot_accounts.iter().find(|&x| x.index == (next_index as u8)).unwrap();
-            
+            let current_slot = slot_accounts
+                .iter()
+                .find(|&x| x.index == (next_index as u8))
+                .unwrap();
+
             let deposit_incubator_accounts = incubator::cpi::accounts::DepositIncubator {
                 slot: current_slot.to_account_info().clone(),
                 mint: depositor_mint.clone(),
                 draggos_metadata: draggos_metadata.to_account_info().clone(),
                 token_metadata: token_metadata.clone(),
                 incubator: incubator.to_account_info().clone(),
-                authority: deposit_authority.to_account_info().clone()
+                authority: deposit_authority.to_account_info().clone(),
             };
 
-            let authority_seeds = &[&INCUBATOR_SEED[..], &DEPOSIT_AUTHORITY_SEED[..], &[deposit_authority.bump]];
+            let authority_seeds = &[
+                &INCUBATOR_SEED[..],
+                &DEPOSIT_AUTHORITY_SEED[..],
+                &[deposit_authority.bump],
+            ];
             let signer_seeds = &[&authority_seeds[..]];
             let deposit_cpi_context = CpiContext::new_with_signer(
-                ctx.accounts.incubator_program.clone(), deposit_incubator_accounts,
-                signer_seeds
+                ctx.accounts.incubator_program.clone(),
+                deposit_incubator_accounts,
+                signer_seeds,
             );
             incubator::cpi::deposit_incubator(deposit_cpi_context)?;
         } else {
@@ -65,10 +73,13 @@ pub mod controller {
         Ok(())
     }
 
-    pub fn create_deposit_authority(ctx: Context<CreateDepositAuthority>) -> ProgramResult {
+    pub fn create_deposit_authority(
+        ctx: Context<CreateDepositAuthority>,
+        bump: u8,
+    ) -> ProgramResult {
         let deposit_authority = &mut ctx.accounts.deposit_authority;
 
-        deposit_authority.bump = *ctx.bumps.get("deposit_authority").unwrap();
+        deposit_authority.bump = bump;
         deposit_authority.authority = *ctx.accounts.authority.key;
 
         Ok(())
@@ -100,7 +111,8 @@ pub struct DepositController<'info> {
     pub update_authority: Account<'info, UpdateAuthority>,
     #[account(
         constraint = token_account.owner == *authority.key,
-        constraint = token_account.mint == mint.key()
+        constraint = token_account.mint == *mint.key,
+        constraint = token_account.amount == 1
     )]
     pub token_account: Account<'info, TokenAccount>,
     #[account(address = spl_token_metadata::id())]
@@ -121,7 +133,5 @@ pub struct CreateDepositAuthority<'info> {
         space = 100 // 32 + 1 + safety room
     )]
     pub deposit_authority: Account<'info, DepositAuthority>,
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
-
-

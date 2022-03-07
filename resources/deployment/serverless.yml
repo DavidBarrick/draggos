@@ -22,6 +22,9 @@ custom:
   GITHUB_REPO: ${self:custom.secrets.GITHUB_REPO}
   BASE_REF: ${self:custom.secrets.BASE_REF}
   SOURCE_VERSION: ${self:custom.secrets.SOURCE_VERSION}
+  CANDY_MACHINE_ID: ${self:custom.secrets.CANDY_MACHINE_ID}
+  SOLANA_NETWORK: ${self:custom.secrets.SOLANA_NETWORK}
+  SOLANA_RPC_HOST: ${self:custom.secrets.SOLANA_RPC_HOST}
 
 provider:
   name: aws
@@ -45,7 +48,16 @@ resources:
             - Name: CF_DISTRIBUTION_ID
               Type: PLAINTEXT
               Value: !Ref CFDistribution
-          Image: 'aws/codebuild/standard:4.0'
+            - Name: CANDY_MACHINE_ID
+              Type: PLAINTEXT
+              Value: ${self:custom.CANDY_MACHINE_ID}
+            - Name: SOLANA_NETWORK
+              Type: PLAINTEXT
+              Value: ${self:custom.SOLANA_NETWORK}
+            - Name: SOLANA_RPC_HOST
+              Type: PLAINTEXT
+              Value: ${self:custom.SOLANA_RPC_HOST}
+          Image: "aws/codebuild/standard:4.0"
           Type: LINUX_CONTAINER
         Name: ${self:service}-${self:provider.stage}
         QueuedTimeoutInMinutes: 60
@@ -84,12 +96,12 @@ resources:
         VersioningConfiguration:
           Status: Enabled
         WebsiteConfiguration:
-          ErrorDocument: '404.html'
-          IndexDocument: 'index.html'
+          ErrorDocument: "404.html"
+          IndexDocument: "index.html"
         CorsConfiguration:
           CorsRules:
             - AllowedOrigins:
-                - '*'
+                - "*"
               AllowedMethods:
                 - GET
     S3BucketPolicy:
@@ -97,17 +109,17 @@ resources:
       Properties:
         Bucket: !Ref S3BucketRoot
         PolicyDocument:
-          Version: '2012-10-17'
+          Version: "2012-10-17"
           Statement:
-            - Effect: 'Allow'
-              Action: 's3:GetObject'
-              Principal: '*'
+            - Effect: "Allow"
+              Action: "s3:GetObject"
+              Principal: "*"
               Resource:
                 - Fn::Join:
-                    - ''
-                    - - 'arn:aws:s3:::'
+                    - ""
+                    - - "arn:aws:s3:::"
                       - !Ref S3BucketRoot
-                      - '/*'
+                      - "/*"
     CFDistribution:
       Type: AWS::CloudFront::Distribution
       Properties:
@@ -118,7 +130,7 @@ resources:
             - ErrorCachingMinTTL: 60
               ErrorCode: 404
               ResponseCode: 200
-              ResponsePagePath: '/index.html'
+              ResponsePagePath: "/index.html"
           DefaultCacheBehavior:
             AllowedMethods:
               - GET
@@ -135,30 +147,30 @@ resources:
                 Forward: none
               QueryString: true
             MaxTTL: 31536000
-            TargetOriginId: 'S3-${self:service}-${self:provider.stage}-root'
-            ViewerProtocolPolicy: 'redirect-to-https'
+            TargetOriginId: "S3-${self:service}-${self:provider.stage}-root"
+            ViewerProtocolPolicy: "redirect-to-https"
           DefaultRootObject: index.html
           Enabled: true
           Origins:
             - S3OriginConfig:
-                OriginAccessIdentity: ''
+                OriginAccessIdentity: ""
               DomainName: !GetAtt S3BucketRoot.DomainName
-              Id: 'S3-${self:service}-${self:provider.stage}-root'
+              Id: "S3-${self:service}-${self:provider.stage}-root"
           ViewerCertificate:
             AcmCertificateArn: ${self:custom.ACM_CERTIFICATE_ARN}
             SslSupportMethod: sni-only
     DeployRole:
-      Type: 'AWS::IAM::Role'
+      Type: "AWS::IAM::Role"
       Properties:
         AssumeRolePolicyDocument:
-          Version: '2012-10-17'
+          Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Principal:
                 Service:
                   - codebuild.amazonaws.com
               Action:
-                - 'sts:AssumeRole'
+                - "sts:AssumeRole"
         Path: /
         ManagedPolicyArns:
           - !Ref DeployPolicy
@@ -166,7 +178,7 @@ resources:
       Type: AWS::IAM::ManagedPolicy
       Properties:
         PolicyDocument:
-          Version: '2012-10-17'
+          Version: "2012-10-17"
           Statement:
             - Sid: AllowToDeployToS3
               Effect: Allow
@@ -178,28 +190,28 @@ resources:
                 - s3:GetBucketVersioning
               Resource:
                 - Fn::Join:
-                    - ''
-                    - - 'arn:aws:s3:::'
+                    - ""
+                    - - "arn:aws:s3:::"
                       - !Ref S3BucketRoot
-                      - '/*'
+                      - "/*"
                 - Fn::Join:
-                    - ''
-                    - - 'arn:aws:s3:::'
+                    - ""
+                    - - "arn:aws:s3:::"
                       - !Ref S3BucketBuild
-                      - '/*'
+                      - "/*"
             - Sid: AllowAllCloudFrontPermissions
               Effect: Allow
               Action:
                 - cloudfront:*
               Resource:
-                - '*'
+                - "*"
             - Sid: StopCodeBuild
               Effect: Allow
               Action:
                 - codebuild:StopBuild
                 - codebuild:DeleteProject
               Resource:
-                - '*'
+                - "*"
             - Sid: AllowLogs
               Effect: Allow
               Action:
