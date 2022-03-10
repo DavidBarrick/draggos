@@ -18,7 +18,11 @@ const Mint = ({ onMint, isUserMinting, candyMachine, wallet }) => {
       <SimpleGrid minChildWidth="300px" spacing="0px" justify="space-between">
         <VStack p={10}>
           <Image src={logo} />
-          <Image src={draggosGif} />
+          <Image
+            border="4px"
+            rounded={"lg"}
+            src={"https://staging.draggos.xyz/assets/preview.gif"}
+          />
         </VStack>
         {candyMachine && (
           <VStack justifyContent={"center"} p={10}>

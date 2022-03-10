@@ -89,14 +89,19 @@ describe('incubator', () => {
     for(let i = 0; i < slots.length; i++) {
       const slot = slots[i]
       console.log(`Create Slot: ${slot.index} | ${slot.address.toString()}`);
-      await program.rpc.createSlot(slot.bump, slot.index, {
-        accounts: {
-          incubator: incubator_pda,
-          slot: slot.address,
-          authority: user.key.publicKey,
-          systemProgram: SystemProgram.programId,
-        },
-      });
+      try {
+        await program.rpc.createSlot(slot.bump, slot.index, {
+          accounts: {
+            incubator: incubator_pda,
+            slot: slot.address,
+            authority: user.key.publicKey,
+            systemProgram: SystemProgram.programId,
+          },
+        });
+      } catch (err) {
+        console.log(err);
+      }
+      
     }
 
     return program.account.incubator.fetch(incubator_pda);
@@ -321,7 +326,7 @@ describe('incubator', () => {
         incubatorAuthority = await createUser();
       }
       
-      const num_slots = 5;
+      const num_slots = 10;
       const incurbator = await createSlots(incubatorAuthority, num_slots);
       assert(incurbator.slots.length === num_slots);
     });

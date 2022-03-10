@@ -7,6 +7,8 @@ import {
   SimpleGrid,
   Button,
   VStack,
+  Spinner,
+  Divider,
 } from "@chakra-ui/react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
@@ -22,6 +24,7 @@ const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
   const [draggosNfts, setDraggosNfts] = useState([]);
   const [incubator, setIncubator] = useState(null);
   const [depositingMint, setDepositingMint] = useState(null);
+  const [loading, setLoading] = useState({});
 
   const wallet = useWallet();
 
@@ -48,6 +51,11 @@ const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
       console.log("No wallet connected");
       return;
     }
+
+    setLoading((prevLoading) => {
+      prevLoading.draggos = true;
+      return prevLoading;
+    });
 
     const provider = new anchor.Provider(connection, anchorWallet, {
       preflightCommitment: "processed",
@@ -94,13 +102,14 @@ const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
           parseInt(b.data.name.split("#").pop())
       )
     );
+
+    setLoading((prevLoading) => {
+      prevLoading.draggos = false;
+      return prevLoading;
+    });
   }, [anchorWallet, candyMachineId, connection]);
 
   const refreshIncubatorState = useCallback(async () => {
-    if (!anchorWallet) {
-      return;
-    }
-
     const provider = new anchor.Provider(connection, anchorWallet, {
       preflightCommitment: "processed",
     });
@@ -114,6 +123,7 @@ const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
     );
     const i = await program.account.incubator.fetch(incubator_pda);
     setIncubator(i);
+    console.log(i);
   }, [anchorWallet, candyMachineId, connection]);
 
   const depositEgg = useCallback(
@@ -179,21 +189,64 @@ const IncubatorContainer = ({ connection, candyMachineId, txTimeout }) => {
   };
 
   return (
-    <Stack p={5}>
+    <Stack spacing={5} p={5}>
       {incubator && (
-        <Box>
+        <VStack>
           <Text>Incubator Stats</Text>
           <Text>
             {incubator.mints.length} / {incubator.slots.length} slots filled
           </Text>
           <Text>Current Batch: {incubator.currentBatch}</Text>
           <Text>Draggos Hatched: {incubator.hatchedTotal}</Text>
-        </Box>
+
+          <SimpleGrid
+            bg="green.100"
+            w="100%"
+            columns={[2, null, 5]}
+            spacing={["10px", null, "20px"]}
+            borderWidth={"1px"}
+            rounded="lg"
+            p={5}
+          >
+            {incubator.slots.map((s, i) => (
+              <VStack>
+                <VStack
+                  justifyContent={"center"}
+                  rounded={"full"}
+                  h="100px"
+                  w="100px"
+                  bg="red.100"
+                  borderColor="gray.400"
+                  borderWidth={"1px"}
+                >
+                  <Text color="gray.400" fontSize={"4xl"}>
+                    {i + 1}
+                  </Text>
+                </VStack>
+              </VStack>
+            ))}
+          </SimpleGrid>
+        </VStack>
       )}
-      <VStack>
+      <Divider />
+      <VStack spacing={5} minH="40vh">
         <Text fontSize={"2xl"} fontWeight="bold">
           Your Draggos
         </Text>
+        {loading.draggos && (
+          <VStack>
+            <Spinner color="gray.500" />
+            <Text fontSize={"sm"} color="gray.500" fontWeight="light">
+              loading your draggos
+            </Text>
+          </VStack>
+        )}
+        {!loading.draggos && anchorWallet && draggosNfts.length === 0 && (
+          <Text>You don't own any Draggos yet!</Text>
+        )}
+        {!loading.draggos && !anchorWallet && (
+          <Text>Connect your wallet to view your Draggos</Text>
+        )}
         <SimpleGrid w="100%" minChildWidth="300px" spacing="20px">
           {draggosNfts.map(renderDraggo)}
         </SimpleGrid>

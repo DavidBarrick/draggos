@@ -103,10 +103,7 @@ const revertCandyMachineAuthority = async () => {
     incubatorProgramPubkey
   );
 
-  console.log(
-    "Update Authority: ",
-    JSON.stringify(update_authority_pda.toString())
-  );
+  console.log("Update Authority: ", update_authority_pda.toString());
 
   const keypair = loadWallet("user0");
   console.log("Signer: ", keypair.publicKey.toString());
@@ -129,6 +126,8 @@ const revertCandyMachineAuthority = async () => {
       candyMachineProgram: CANDY_MACHINE_V2_PROGRAM,
     },
   });
+
+  console.log("Reverted To: ", incubator.authority.toString());
 };
 
 const updateUpdateAuthority = async (mint, update_authority) => {
@@ -192,7 +191,7 @@ const getMintAddresses = async (firstCreatorAddress) => {
   );
 };
 
-const main = async () => {
+/*const main = async () => {
   try {
     const [UPDATE_AUTHORITY_PDA] = await PublicKey.findProgramAddress(
       [Buffer.from(INCUBATOR_SEED), Buffer.from(UPDATE_AUTHORITY_SEED)],
@@ -205,19 +204,19 @@ const main = async () => {
     const mints = await getMintAddresses(creator);
     console.log(mints);
     for (const mint of mints) {
-      await updateUpdateAuthority(mint, UPDATE_AUTHORITY_PDA);
+      //await updateUpdateAuthority(mint, UPDATE_AUTHORITY_PDA);
     }
   } catch (err) {
     console.error(err);
   }
-};
+};*/
 
-/*const main = async () => {
+const main = async () => {
   try {
     await revertCandyMachineAuthority();
   } catch (err) {
     console.error(err);
   }
-};*/
+};
 
 main();
