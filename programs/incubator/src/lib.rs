@@ -317,9 +317,9 @@ pub mod incubator {
             return Err(IncubatorError::InvalidAuthority.into());
         }
 
-        let deposit_incubator_accounts = mpl_candy_machine::cpi::accounts::UpdateCandyMachine {
+        let update_accounts = mpl_candy_machine::cpi::accounts::UpdateCandyMachine {
             candy_machine: candy_machine.clone(),
-            authority: authority.to_account_info().clone(),
+            authority: update_authority.to_account_info().clone(),
             //don't need this param
             wallet: candy_machine.clone(),
         };
@@ -332,7 +332,7 @@ pub mod incubator {
         let signer_seeds = &[&authority_seeds[..]];
         let cpi_context = CpiContext::new_with_signer(
             candy_machine_program.clone(),
-            deposit_incubator_accounts,
+            update_accounts,
             signer_seeds,
         );
 
@@ -423,6 +423,7 @@ pub struct RevertCandyMachineAuthority<'info> {
         bump = incubator.bump,
     )]
     pub incubator: Account<'info, Incubator>,
+    #[account(mut)]
     pub candy_machine: AccountInfo<'info>,
     pub candy_machine_program: AccountInfo<'info>,
     #[account(

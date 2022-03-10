@@ -53,12 +53,12 @@ functions:
     environment:
       SECRET_KEY: ${self:custom.SECRET_KEY}
       INCUBATOR_PROGRAM_ID: ${self:custom.INCUBATOR_PROGRAM_ID}
-    #events:
-    #  - schedule: cron(0 /1 * * ? *)
+    events:
+      - schedule: cron(0/1 * * * ? *)
 
   updateMints:
     handler: tasks/updateMints.handler
     environment:
       CANDY_MACHINE_ID: ${self:custom.CANDY_MACHINE_ID}
-    #events:
-    #  - schedule: cron(0 /1 * * ? *)
+    events:
+      - schedule: cron(0/1 * * * ? *)
