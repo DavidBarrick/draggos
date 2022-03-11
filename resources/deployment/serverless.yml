@@ -16,7 +16,7 @@ service: draggos-app-deployment
 configValidationMode: error
 
 custom:
-  secrets: ${ssm:/aws/reference/secretsmanager/draggos-deployment-${self:provider.stage}~true}
+  secrets: ${ssm:/aws/reference/secretsmanager/draggos-${self:provider.stage}}
   S3_BUCKET: ${self:custom.secrets.APP_S3_BUCKET}
   ACM_CERTIFICATE_ARN: ${self:custom.secrets.APP_ACM_CERTIFICATE_ARN}
   GITHUB_REPO: ${self:custom.secrets.GITHUB_REPO}
@@ -25,6 +25,10 @@ custom:
   CANDY_MACHINE_ID: ${self:custom.secrets.CANDY_MACHINE_ID}
   SOLANA_NETWORK: ${self:custom.secrets.SOLANA_NETWORK}
   SOLANA_RPC_HOST: ${self:custom.secrets.SOLANA_RPC_HOST}
+  INCUBATOR_PROGRAM_ID: ${self:custom.secrets.INCUBATOR_PROGRAM_ID}
+  CONTROLLER_PROGRAM_ID: ${self:custom.secrets.CONTROLLER_PROGRAM_ID}
+  API_KEY: ${self:custom.secrets.API_KEY}
+  ENDPOINT: ${self:custom.secrets.ENDPOINT}
 
 provider:
   name: aws
@@ -57,6 +61,18 @@ resources:
             - Name: SOLANA_RPC_HOST
               Type: PLAINTEXT
               Value: ${self:custom.SOLANA_RPC_HOST}
+            - Name: INCUBATOR_PROGRAM_ID
+              Type: PLAINTEXT
+              Value: ${self:custom.INCUBATOR_PROGRAM_ID}
+            - Name: CONTROLLER_PROGRAM_ID
+              Type: PLAINTEXT
+              Value: ${self:custom.CONTROLLER_PROGRAM_ID}
+            - Name: API_KEY
+              Type: PLAINTEXT
+              Value: ${self:custom.API_KEY}
+            - Name: ENDPOINT
+              Type: PLAINTEXT
+              Value: ${self:custom.ENDPOINT}
           Image: "aws/codebuild/standard:4.0"
           Type: LINUX_CONTAINER
         Name: ${self:service}-${self:provider.stage}
