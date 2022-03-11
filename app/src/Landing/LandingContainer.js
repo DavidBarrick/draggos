@@ -73,7 +73,7 @@ const Landing = ({ connection, candyMachineId, txTimeout }) => {
     try {
       setIsUserMinting(true);
       document.getElementById("#identity")?.click();
-      console.log(candyMachine);
+
       if (wallet.connected && candyMachine?.program && wallet.publicKey) {
         const mintTxId = (
           await CandyMachineUtils.mintOneToken(candyMachine, wallet.publicKey)

@@ -19,10 +19,9 @@ frameworkVersion: "3"
 custom:
   secrets: ${ssm:/aws/reference/secretsmanager/draggos-${self:provider.stage}}
   SECRET_KEY: ${self:custom.secrets.SECRET_KEY}
-  RPC_URL: ${self:custom.secrets.RPC_URL}
+  SOLANA_RPC_HOST: ${self:custom.secrets.SOLANA_RPC_HOST}
   INCUBATOR_PROGRAM_ID: ${self:custom.secrets.INCUBATOR_PROGRAM_ID}
   CANDY_MACHINE_ID: ${self:custom.secrets.CANDY_MACHINE_ID}
-  HEADERS: ${self:custom.secrets.HEADERS}
   S3_BUCKET: ${cf:draggos-app-deployment-${self:provider.stage}.BuildBucket}
 
 provider:
@@ -39,7 +38,7 @@ provider:
     lambda: true
   environment:
     S3_BUCKET: ${self:custom.S3_BUCKET}
-    RPC_URL: ${self:custom.RPC_URL}
+    RPC_URL: ${self:custom.SOLANA_RPC_HOST}
   iam:
     role:
       name: ${self:service}-${self:provider.stage}-role

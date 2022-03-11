@@ -12,7 +12,7 @@ phases:
     commands:
       - echo Build started
       - export NODE_OPTIONS="--max-old-space-size=8192"
-      - npm run build --CANDY_MACHINE_ID=$CANDY_MACHINE_ID --SOLANA_NETWORK=$SOLANA_NETWORK --SOLANA_RPC_HOST=$SOLANA_RPC_HOST
+      - npm run build --CANDY_MACHINE_ID=$CANDY_MACHINE_ID --SOLANA_NETWORK=$SOLANA_NETWORK --SOLANA_RPC_HOST=$SOLANA_RPC_HOST --INCUBATOR_PROGRAM_ID=$INCUBATOR_PROGRAM_ID --CONTROLLER_PROGRAM_ID=$CONTROLLER_PROGRAM_ID --API_KEY=$API_KEY --ENDPOINT=$ENDPOINT
   post_build:
     commands:
       # copy the contents of /build to S3

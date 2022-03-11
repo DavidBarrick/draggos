@@ -31,7 +31,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "REACT_APP_CANDY_MACHINE_ID=\"$npm_config_CANDY_MACHINE_ID\" REACT_APP_SOLANA_NETWORK=\"$npm_config_SOLANA_NETWORK\" REACT_APP_SOLANA_RPC_HOST=\"$npm_config_SOLANA_RPC_HOST\" react-scripts build",
+    "build": "REACT_APP_CANDY_MACHINE_ID=\"$npm_config_CANDY_MACHINE_ID\" REACT_APP_SOLANA_NETWORK=\"$npm_config_SOLANA_NETWORK\" REACT_APP_SOLANA_RPC_HOST=\"$npm_config_SOLANA_RPC_HOST\" REACT_APP_API_KEY=\"$npm_config_API_KEY\" REACT_APP_ENDPOINT=\"$npm_config_ENDPOINT\" REACT_APP_INCUBATOR_PROGRAM_ID=\"$npm_config_INCUBATOR_PROGRAM_ID\" REACT_APP_CONTROLLER_PROGRAM_ID=\"$npm_config_CONTROLLER_PROGRAM_ID\" react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

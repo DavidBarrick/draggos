@@ -19,45 +19,6 @@ export const CANDY_MACHINE_PROGRAM = new anchor.web3.PublicKey(
 export const TOKEN_METADATA_PROGRAM_ID = new anchor.web3.PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );
-/*
-interface CandyMachineState {
-  itemsAvailable: number;
-  itemsRedeemed: number;
-  itemsRemaining: number;
-  treasury: anchor.web3.PublicKey;
-  tokenMint: anchor.web3.PublicKey;
-  isSoldOut: boolean;
-  isActive: boolean;
-  isPresale: boolean;
-  isWhitelistOnly: boolean;
-  goLiveDate: anchor.BN;
-  price: anchor.BN;
-  gatekeeper: null | {
-    expireOnUse: boolean;
-    gatekeeperNetwork: anchor.web3.PublicKey;
-  };
-  endSettings: null | {
-    number: anchor.BN;
-    endSettingType: any;
-  };
-  whitelistMintSettings: null | {
-    mode: any;
-    mint: anchor.web3.PublicKey;
-    presale: boolean;
-    discountPrice: null | anchor.BN;
-  };
-  hiddenSettings: null | {
-    name: string;
-    uri: string;
-    hash: Uint8Array;
-  };
-}
-
-export interface CandyMachineAccount {
-  id: anchor.web3.PublicKey;
-  program: anchor.Program;
-  state: CandyMachineState;
-}*/
 
 export const awaitTransactionSignatureConfirmation = async (
   txid,
@@ -172,6 +133,7 @@ export const getCandyMachineState = async (
   const itemsRedeemed = state.itemsRedeemed.toNumber();
   const itemsRemaining = itemsAvailable - itemsRedeemed;
 
+  const goLiveDate = new Date(state.data.goLiveDate.muln(1000).toNumber());
   return {
     id: candyMachineId,
     program,
@@ -180,11 +142,10 @@ export const getCandyMachineState = async (
       itemsRedeemed,
       itemsRemaining,
       isSoldOut: itemsRemaining === 0,
-      isActive: false,
+      isActive: goLiveDate.getTime() <= Date.now(),
       isPresale: false,
       isWhitelistOnly: false,
-      goLiveDate: `2022-03-14T00:00:00.000Z`, // state.data.goLiveDate,
-      launchDate: new Date(`2021-03-14T00:00:00.000Z`),
+      goLiveDate: goLiveDate,
       treasury: state.wallet,
       tokenMint: state.tokenMint,
       gatekeeper: state.data.gatekeeper,
@@ -228,6 +189,28 @@ export const getCandyMachineCreator = async (candyMachine) => {
     [Buffer.from("candy_machine"), candyMachine.toBuffer()],
     CANDY_MACHINE_PROGRAM
   );
+};
+
+export const getCollectionPDA = async (candyMachineAddress) => {
+  return await anchor.web3.PublicKey.findProgramAddress(
+    [Buffer.from("collection"), candyMachineAddress.toBuffer()],
+    CANDY_MACHINE_PROGRAM
+  );
+};
+
+export const getCollectionAuthorityRecordPDA = async (mint, newAuthority) => {
+  return (
+    await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from("metadata"),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        mint.toBuffer(),
+        Buffer.from("collection_authority"),
+        newAuthority.toBuffer(),
+      ],
+      TOKEN_METADATA_PROGRAM_ID
+    )
+  )[0];
 };
 
 export const mintOneToken = async (candyMachine, payer) => {
@@ -396,6 +379,60 @@ export const mintOneToken = async (candyMachine, payer) => {
   }
   const metadataAddress = await getMetadata(mint.publicKey);
   const masterEdition = await getMasterEdition(mint.publicKey);
+
+  const [collectionPDA] = await getCollectionPDA(candyMachineAddress);
+  const collectionPDAAccount =
+    await candyMachine.program.provider.connection.getAccountInfo(
+      collectionPDA
+    );
+  if (collectionPDAAccount) {
+    try {
+      const collectionData =
+        await candyMachine.program.account.collectionPda.fetch(collectionPDA);
+      console.log(collectionData);
+      const collectionMint = collectionData.mint;
+      const collectionAuthorityRecord = await getCollectionAuthorityRecordPDA(
+        collectionMint,
+        collectionPDA
+      );
+      console.log(collectionMint);
+      if (collectionMint) {
+        const collectionMetadata = await getMetadata(collectionMint);
+        const collectionMasterEdition = await getMasterEdition(collectionMint);
+        remainingAccounts.push(
+          ...[
+            {
+              pubkey: collectionPDA,
+              isWritable: true,
+              isSigner: false,
+            },
+            {
+              pubkey: collectionMint,
+              isWritable: false,
+              isSigner: false,
+            },
+            {
+              pubkey: collectionMetadata,
+              isWritable: true,
+              isSigner: false,
+            },
+            {
+              pubkey: collectionMasterEdition,
+              isWritable: false,
+              isSigner: false,
+            },
+            {
+              pubkey: collectionAuthorityRecord,
+              isWritable: false,
+              isSigner: false,
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   const [candyMachineCreator, creatorBump] = await getCandyMachineCreator(
     candyMachineAddress
