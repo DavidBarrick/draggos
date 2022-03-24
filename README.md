@@ -4,4 +4,4 @@
 
 [draggos.xyz](https://draggos.xyz) (site coming soon)
 
-Launching Ap 25 ✨
+Launching Apr 25 ✨
